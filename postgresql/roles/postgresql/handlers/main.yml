@@ -1,0 +1,12 @@
+---
+# listen_addresses, shared_buffers and max_connections only take effect on restart.
+- name: Restart postgresql
+  ansible.builtin.service:
+    name: postgresql
+    state: restarted
+
+# pg_hba.conf changes only need a reload (no dropped connections).
+- name: Reload postgresql
+  ansible.builtin.service:
+    name: postgresql
+    state: reloaded

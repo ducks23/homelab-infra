@@ -1,0 +1,14 @@
+# {{ ansible_managed }}
+# TYPE  DATABASE  USER      ADDRESS          METHOD
+
+# Unix socket: the postgres OS user is the superuser (this is how Ansible connects).
+local   all       postgres                   peer
+local   all       all                        scram-sha-256
+
+# Loopback
+host    all       all       127.0.0.1/32     scram-sha-256
+host    all       all       ::1/128          scram-sha-256
+{% for rule in postgresql_hba_entries %}
+
+{{ rule.type | default('host') }}    {{ rule.database | default('all') }}    {{ rule.user | default('all') }}    {{ rule.address }}    {{ rule.method | default('scram-sha-256') }}
+{% endfor %}

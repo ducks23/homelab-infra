@@ -1,0 +1,5 @@
+# Real secrets; commit only group_vars/*/vault.yml.example
+group_vars/*/vault.yml
+fetched/*.yaml
+*.retry
+.vault_pass

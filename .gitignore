@@ -1,0 +1,20 @@
+# Repo-wide safety net. Per-project .gitignore files hold the specifics.
+.DS_Store
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.tfvars
+!*.tfvars.example
+*.tfstate
+*.tfstate.*
+.terraform/
+.vault_pass
+.ghcr-token
+vault.yml
+kubeconfig*.yaml
+*.pem
+*.key
+id_rsa*
+id_ed25519*

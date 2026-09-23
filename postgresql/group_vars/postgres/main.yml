@@ -1,0 +1,27 @@
+---
+# Overrides for the alpine-postgres host. Every option and its default is documented in
+# roles/postgresql/defaults/main.yml.
+
+# DNS servers written to /etc/resolv.conf on first bootstrap (keep in sync with
+# var.dns_servers in proxmox/variables.tf).
+alpine_dns_servers:
+  - 192.168.1.1
+
+# Accept connections from the LAN (password auth, scram-sha-256). Each role may
+# only reach its own database, so dev credentials can't touch prod data.
+postgresql_hba_entries:
+  - { type: host, database: app, user: app, address: 192.168.1.0/24 }
+  - { type: host, database: app_prod, user: app_prod, address: 192.168.1.0/24 }
+
+# Roles and databases to create (app = dev, app_prod = prod). Passwords come from group_vars/postgres/vault.yml.
+postgresql_users:
+  - name: app
+    password: "{{ vault_postgresql_app_password }}"
+  - name: app_prod
+    password: "{{ vault_postgresql_app_prod_password }}"
+
+postgresql_databases:
+  - name: app
+    owner: app
+  - name: app_prod
+    owner: app_prod

@@ -1,0 +1,42 @@
+---
+- name: Bootstrap Alpine so Ansible can manage it
+  hosts: postgres
+  gather_facts: false
+  tasks:
+    # wait_for_connection would run the ping module, which needs the Python we're about to
+    # install, so just wait for the SSH port from the control machine.
+    - name: Wait for SSH (cloud-init is still applying the key on first boot)
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 22
+        timeout: 300
+      delegate_to: localhost
+
+    # cloud-init records the nameserver as "dns-nameservers" in /etc/network/interfaces, but
+    # Alpine's image has no openresolv to turn that into /etc/resolv.conf, so nothing (apk
+    # included) can resolve names. Write it directly; it's a plain file and survives reboots.
+    - name: Ensure /etc/resolv.conf exists
+      ansible.builtin.raw: |
+        if [ ! -s /etc/resolv.conf ]; then
+          printf '%s\n' {% for server in alpine_dns_servers %}'nameserver {{ server }}' {% endfor %}| doas -n tee /etc/resolv.conf >/dev/null
+          echo CONFIGURED
+        fi
+      register: resolv_bootstrap
+      changed_when: "'CONFIGURED' in resolv_bootstrap.stdout"
+
+    # Alpine's cloud image may not ship Python, so modules can't run yet; use raw.
+    - name: Install python3 if missing
+      ansible.builtin.raw: |
+        if ! command -v python3 >/dev/null 2>&1; then
+          if command -v doas >/dev/null 2>&1; then doas -n apk add --no-cache python3
+          else sudo -n apk add --no-cache python3; fi
+          echo BOOTSTRAPPED
+        fi
+      register: python_bootstrap
+      changed_when: "'BOOTSTRAPPED' in python_bootstrap.stdout"
+
+- name: Provision PostgreSQL
+  hosts: postgres
+  become: true
+  roles:
+    - postgresql

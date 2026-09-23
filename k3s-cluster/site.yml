@@ -1,0 +1,58 @@
+---
+- name: Prepare all cluster nodes
+  hosts: k3s_cluster
+  become: true
+  roles:
+    - k3s_common
+
+- name: Deploy k3s server nodes (embedded etcd HA)
+  hosts: k3s_server
+  become: true
+  roles:
+    - k3s_server
+    - kube_vip
+
+- name: Deploy k3s agent (worker) nodes, if any are defined
+  hosts: k3s_agent
+  become: true
+  roles:
+    - k3s_agent
+
+# Runs on every server, but only each cluster's first server does the work.
+- name: Fetch kubeconfigs to the control machine (one per cluster)
+  hosts: k3s_server
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Read remote kubeconfig
+      ansible.builtin.slurp:
+        src: /etc/rancher/k3s/k3s.yaml
+      register: kubeconfig_raw
+      when: inventory_hostname == k3s_cluster_servers[0]
+
+    - name: Ensure local fetched/ directory exists
+      ansible.builtin.file:
+        path: "{{ playbook_dir }}/fetched"
+        state: directory
+        mode: "0700"
+      delegate_to: localhost
+      become: false
+      run_once: true
+
+    - name: Write kubeconfig locally, pointed at the cluster's reachable address
+      ansible.builtin.copy:
+        # Point at the VIP and rename "default" to the cluster name so the two
+        # kubeconfigs can be merged without context collisions.
+        content: "{{ (kubeconfig_raw.content | b64decode) | replace('127.0.0.1', kube_vip_address if kube_vip_enabled else ansible_host) | regex_replace('(?m)(name|cluster|user|current-context): default$', '\\1: ' + k3s_cluster_name) }}"
+        dest: "{{ kubeconfig_local_path }}"
+        mode: "0600"
+      delegate_to: localhost
+      become: false
+      when: inventory_hostname == k3s_cluster_servers[0]
+
+    - name: How to use it
+      ansible.builtin.debug:
+        msg:
+          - "Kubeconfig written to {{ kubeconfig_local_path }}"
+          - "Run: export KUBECONFIG={{ kubeconfig_local_path }} && kubectl get nodes -o wide"
+      when: inventory_hostname == k3s_cluster_servers[0]

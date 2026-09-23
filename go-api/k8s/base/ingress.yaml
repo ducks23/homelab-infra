@@ -1,0 +1,19 @@
+# Traefik routes on the Host header. The host here is a placeholder; each
+# overlay sets the real one (a nip.io name that resolves to that cluster's VIP,
+# so no local DNS or /etc/hosts entry is needed).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: go-api
+spec:
+  rules:
+    - host: go-api.example.invalid
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: go-api
+                port:
+                  number: 80

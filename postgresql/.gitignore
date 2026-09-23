@@ -1,0 +1,4 @@
+# Real secrets; commit only group_vars/postgres/vault.yml.example
+group_vars/postgres/vault.yml
+*.retry
+.vault_pass

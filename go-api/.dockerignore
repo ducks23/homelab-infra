@@ -1,0 +1,8 @@
+.env
+.env.*
+.git
+bin/
+k8s/
+Makefile
+README.md
+.ghcr-token

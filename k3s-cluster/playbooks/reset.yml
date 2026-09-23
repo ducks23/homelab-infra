@@ -1,0 +1,28 @@
+---
+# Tears k3s completely off every node in the inventory. Destructive —
+# ask before running against a cluster with anything on it.
+#
+# Usage: ansible-playbook playbooks/reset.yml
+
+- name: Uninstall k3s from all nodes
+  hosts: k3s_cluster
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Check for k3s server uninstall script
+      ansible.builtin.stat:
+        path: /usr/local/bin/k3s-uninstall.sh
+      register: k3s_uninstall_script
+
+    - name: Run k3s server uninstall script
+      ansible.builtin.command: /usr/local/bin/k3s-uninstall.sh
+      when: k3s_uninstall_script.stat.exists
+
+    - name: Check for k3s agent uninstall script
+      ansible.builtin.stat:
+        path: /usr/local/bin/k3s-agent-uninstall.sh
+      register: k3s_agent_uninstall_script
+
+    - name: Run k3s agent uninstall script
+      ansible.builtin.command: /usr/local/bin/k3s-agent-uninstall.sh
+      when: k3s_agent_uninstall_script.stat.exists

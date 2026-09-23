@@ -1,0 +1,47 @@
+---
+# Deploys kube-vip as a DaemonSet (ARP/Layer2 mode) providing a floating VIP
+# for the Kubernetes API server across all 3 server nodes. Applied once, from
+# the primary server node, after that node's k3s API is up.
+
+- name: Configure kube-vip
+  when:
+    - kube_vip_enabled | bool
+    - k3s_is_primary
+  block:
+    - name: Check for kubectl binary
+      ansible.builtin.stat:
+        path: /usr/local/bin/kubectl
+      register: kubectl_bin
+
+    - name: Symlink k3s as kubectl if missing
+      ansible.builtin.file:
+        src: /usr/local/bin/k3s
+        dest: /usr/local/bin/kubectl
+        state: link
+      when: not kubectl_bin.stat.exists
+
+    - name: Download kube-vip RBAC manifest
+      ansible.builtin.get_url:
+        url: "https://kube-vip.io/manifests/rbac.yaml"
+        dest: /tmp/kube-vip-rbac.yaml
+        mode: "0644"
+
+    - name: Render kube-vip DaemonSet manifest
+      ansible.builtin.template:
+        src: kube-vip-daemonset.yaml.j2
+        dest: /tmp/kube-vip-daemonset.yaml
+        mode: "0644"
+
+    - name: Apply kube-vip RBAC
+      ansible.builtin.command: kubectl apply -f /tmp/kube-vip-rbac.yaml
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: kube_vip_rbac_apply
+      changed_when: "'unchanged' not in kube_vip_rbac_apply.stdout"
+
+    - name: Apply kube-vip DaemonSet
+      ansible.builtin.command: kubectl apply -f /tmp/kube-vip-daemonset.yaml
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: kube_vip_ds_apply
+      changed_when: "'unchanged' not in kube_vip_ds_apply.stdout"

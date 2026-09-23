@@ -1,0 +1,46 @@
+---
+# --- Cluster-wide settings -------------------------------------------------
+
+# k3s install channel. Leave as "stable" unless you need something else
+# (e.g. "latest"). See https://update.k3s.io/v1-release/channels
+k3s_channel: stable
+
+# Set to a specific version string (e.g. "v1.30.5+k3s1") to pin instead of
+# using k3s_channel. Leave empty to just follow the channel above.
+k3s_version: ""
+
+# Per-cluster settings live in group_vars/prod.yml and group_vars/dev.yml:
+#   k3s_cluster_name, k3s_token, kube_vip_address
+# Generate a new token with: openssl rand -hex 32
+# Strongly recommended: encrypt each token with ansible-vault, e.g.:
+#   ansible-vault encrypt_string 'yoursecret' --name 'k3s_token'
+
+# Components to disable from the default k3s install. Empty = keep the k3s
+# defaults: Traefik (ingress) and ServiceLB (gives LoadBalancer services,
+# including Traefik's, an external IP from the nodes). Add "traefik" and/or
+# "servicelb" here to drop them, e.g. if you run ingress-nginx and MetalLB.
+k3s_server_disable: []
+
+# Extra flags appended to every server / agent node's install command.
+k3s_extra_server_args: ""
+k3s_extra_agent_args: ""
+
+# --- Firewall ---------------------------------------------------------------
+# If true, and ufw is active on a host, open the ports k3s/etcd/flannel need.
+k3s_configure_firewall: true
+
+# --- kube-vip: floating VIP for the Kubernetes API server -------------------
+kube_vip_enabled: true
+kube_vip_version: "v0.8.2"
+# kube_vip_address is set per cluster (group_vars/prod.yml, dev.yml).
+# NIC name kube-vip should send ARP announcements from on each server node
+# (check with `ip a` on the servers, e.g. eth0/ens18/enp0s3).
+kube_vip_interface: "eth0"
+
+# --- Per-cluster host lists (resolved from k3s_cluster_name) ----------------
+# Roles use these instead of the global k3s_server group so each cluster only
+# ever sees its own nodes.
+k3s_cluster_servers: "{{ groups[k3s_cluster_name + '_server'] }}"
+
+# --- Local kubeconfig --------------------------------------------------------
+kubeconfig_local_path: "{{ playbook_dir }}/fetched/kubeconfig-{{ k3s_cluster_name }}.yaml"

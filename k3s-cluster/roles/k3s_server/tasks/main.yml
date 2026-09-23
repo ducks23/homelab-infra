@@ -1,0 +1,63 @@
+---
+- name: Determine primary (cluster-init) server
+  ansible.builtin.set_fact:
+    k3s_primary_server: "{{ k3s_cluster_servers[0] }}"
+    k3s_is_primary: "{{ inventory_hostname == k3s_cluster_servers[0] }}"
+
+- name: Build --disable flags from k3s_server_disable
+  ansible.builtin.set_fact:
+    k3s_disable_flags: "{{ k3s_server_disable | map('regex_replace', '^(.*)$', '--disable \\1') | join(' ') }}"
+
+# --- Primary node: initializes the etcd cluster -----------------------------
+- name: Install k3s on primary server (cluster-init)
+  ansible.builtin.shell: |
+    curl -sfL https://get.k3s.io | \
+    INSTALL_K3S_CHANNEL="{{ k3s_channel }}" \
+    {{ 'INSTALL_K3S_VERSION=' + k3s_version if k3s_version else '' }} \
+    K3S_TOKEN="{{ k3s_token }}" \
+    sh -s - server \
+      --cluster-init \
+      --tls-san "{{ kube_vip_address }}" \
+      --tls-san "{{ ansible_host | default(inventory_hostname) }}" \
+      {{ k3s_disable_flags }} \
+      {{ k3s_extra_server_args }}
+  args:
+    creates: /etc/rancher/k3s/k3s.yaml
+  when: k3s_is_primary
+
+# --- Joining nodes: wait for the primary, then join as additional servers --
+- name: Wait until the primary server's API is reachable
+  ansible.builtin.wait_for:
+    host: "{{ hostvars[k3s_primary_server].ansible_host }}"
+    port: 6443
+    timeout: 180
+  when: not k3s_is_primary
+
+- name: Install k3s on joining server nodes
+  ansible.builtin.shell: |
+    curl -sfL https://get.k3s.io | \
+    INSTALL_K3S_CHANNEL="{{ k3s_channel }}" \
+    {{ 'INSTALL_K3S_VERSION=' + k3s_version if k3s_version else '' }} \
+    K3S_TOKEN="{{ k3s_token }}" \
+    sh -s - server \
+      --server "https://{{ hostvars[k3s_primary_server].ansible_host }}:6443" \
+      --tls-san "{{ kube_vip_address }}" \
+      --tls-san "{{ ansible_host | default(inventory_hostname) }}" \
+      {{ k3s_disable_flags }} \
+      {{ k3s_extra_server_args }}
+  args:
+    creates: /etc/rancher/k3s/k3s.yaml
+  when: not k3s_is_primary
+
+- name: Wait for all {{ k3s_cluster_servers | length }} server nodes to register as Ready
+  ansible.builtin.shell: |
+    set -o pipefail
+    k3s kubectl get nodes --no-headers | awk '{print $2}' | grep -c '^Ready$'
+  args:
+    executable: /bin/bash
+  register: ready_count
+  until: (ready_count.stdout | trim) == (k3s_cluster_servers | length | string)
+  retries: 30
+  delay: 10
+  changed_when: false
+  when: k3s_is_primary

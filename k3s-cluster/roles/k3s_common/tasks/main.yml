@@ -1,0 +1,75 @@
+---
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install base packages
+  ansible.builtin.apt:
+    name:
+      - curl
+      - open-iscsi
+      - nfs-common
+      - apt-transport-https
+      - ca-certificates
+    state: present
+
+- name: Disable swap (running)
+  ansible.builtin.command: swapoff -a
+  when: ansible_swaptotal_mb > 0
+  changed_when: true
+
+- name: Disable swap (persistent) in /etc/fstab
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '^([^#].*\sswap\s.*)$'
+    replace: '# \1'
+
+- name: Ensure kernel modules load at boot
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/k3s.conf
+    content: |
+      overlay
+      br_netfilter
+    mode: "0644"
+
+- name: Load kernel modules now
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - overlay
+    - br_netfilter
+  ignore_errors: true  # some kernels build these in, not as loadable modules
+
+- name: Set sysctl params required by k3s/flannel
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_set: true
+    reload: true
+  loop:
+    - { name: net.bridge.bridge-nf-call-iptables, value: "1" }
+    - { name: net.bridge.bridge-nf-call-ip6tables, value: "1" }
+    - { name: net.ipv4.ip_forward, value: "1" }
+
+- name: Check if ufw is active
+  ansible.builtin.command: ufw status
+  register: ufw_status
+  changed_when: false
+  failed_when: false
+
+- name: Open required firewall ports (ufw)
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+  loop:
+    - { port: "6443", proto: "tcp" }        # Kubernetes API
+    - { port: "2379:2380", proto: "tcp" }   # etcd client/peer (server<->server)
+    - { port: "8472", proto: "udp" }        # flannel VXLAN
+    - { port: "10250", proto: "tcp" }       # kubelet
+    - { port: "51820:51821", proto: "udp" } # flannel wireguard backend (if used)
+  when:
+    - k3s_configure_firewall | bool
+    - "'Status: active' in ufw_status.stdout"

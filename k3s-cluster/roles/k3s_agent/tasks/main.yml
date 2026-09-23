@@ -1,0 +1,20 @@
+---
+# Optional role — only used for hosts placed in the [k3s_agent] inventory
+# group. Not required for the core 3-node HA server clusters.
+
+- name: Wait until a server node's API is reachable
+  ansible.builtin.wait_for:
+    host: "{{ hostvars[k3s_cluster_servers[0]].ansible_host }}"
+    port: 6443
+    timeout: 180
+
+- name: Install k3s agent
+  ansible.builtin.shell: |
+    curl -sfL https://get.k3s.io | \
+    INSTALL_K3S_CHANNEL="{{ k3s_channel }}" \
+    {{ 'INSTALL_K3S_VERSION=' + k3s_version if k3s_version else '' }} \
+    K3S_URL="https://{{ (kube_vip_address if kube_vip_enabled else hostvars[k3s_cluster_servers[0]].ansible_host) }}:6443" \
+    K3S_TOKEN="{{ k3s_token }}" \
+    sh -s - agent {{ k3s_extra_agent_args }}
+  args:
+    creates: /etc/systemd/system/k3s-agent.service

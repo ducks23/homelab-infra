@@ -1,0 +1,5 @@
+---
+# cp vault.yml.example vault.yml, fill in the real value, then (recommended):
+#   ansible-vault encrypt vault.yml
+# Generate a token with: openssl rand -hex 32
+vault_k3s_token: "change-me"

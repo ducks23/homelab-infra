@@ -1,0 +1,97 @@
+---
+- name: Install PostgreSQL and the Python driver Ansible's postgres modules need
+  community.general.apk:
+    name:
+      - "postgresql{{ postgresql_version }}"
+      - "postgresql{{ postgresql_version }}-client"
+      - "postgresql{{ postgresql_version }}-contrib"
+      - "postgresql{{ postgresql_version }}-openrc"
+      - py3-psycopg2
+      - acl
+    update_cache: true
+    state: present
+
+# The init script picks a version with `pg_versions get-default`; pin it so a second
+# installed version can never change which cluster the service manages.
+- name: Pin the PostgreSQL major version for the init script
+  ansible.builtin.lineinfile:
+    path: /etc/conf.d/postgresql
+    regexp: '^#?\s*pg_version='
+    line: 'pg_version="{{ postgresql_version }}"'
+
+# Creates the cluster (initdb, as the postgres user) and moves the config files to
+# /etc/postgresql. Doing it here, rather than letting the first start auto-create it,
+# means our config is in place before the server ever runs.
+- name: Initialise the database cluster
+  ansible.builtin.command:
+    cmd: rc-service postgresql setup
+    creates: "{{ postgresql_data_dir }}/PG_VERSION"
+
+- name: Create conf.d for our settings
+  ansible.builtin.file:
+    path: "{{ postgresql_conf_dir }}/conf.d"
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: "0750"
+
+- name: Include conf.d from postgresql.conf
+  ansible.builtin.lineinfile:
+    path: "{{ postgresql_conf_dir }}/postgresql.conf"
+    regexp: '^#?\s*include_dir\s*='
+    line: "include_dir = 'conf.d'"
+  notify: Restart postgresql
+
+- name: Configure the server
+  ansible.builtin.template:
+    src: 10-ansible.conf.j2
+    dest: "{{ postgresql_conf_dir }}/conf.d/10-ansible.conf"
+    owner: postgres
+    group: postgres
+    mode: "0640"
+  notify: Restart postgresql
+
+# initdb leaves local access as "trust"; replace it with real authentication.
+- name: Configure client authentication
+  ansible.builtin.template:
+    src: pg_hba.conf.j2
+    dest: "{{ postgresql_conf_dir }}/pg_hba.conf"
+    owner: postgres
+    group: postgres
+    mode: "0640"
+  notify: Reload postgresql
+
+- name: Enable PostgreSQL at boot and start it
+  ansible.builtin.service:
+    name: postgresql
+    enabled: true
+    state: started
+
+# Apply any pending restart/reload now so the tasks below talk to the final configuration.
+- name: Apply configuration changes
+  ansible.builtin.meta: flush_handlers
+
+# The postgres modules connect over the local socket as the postgres OS user (peer auth).
+- name: Create roles
+  community.postgresql.postgresql_user:
+    name: "{{ item.name }}"
+    password: "{{ item.password }}"
+    role_attr_flags: "{{ item.role_attr_flags | default(omit) }}"
+    login_unix_socket: /run/postgresql
+    state: present
+  loop: "{{ postgresql_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+  no_log: true
+  become_user: postgres
+
+- name: Create databases
+  community.postgresql.postgresql_db:
+    name: "{{ item.name }}"
+    owner: "{{ item.owner | default(omit) }}"
+    login_unix_socket: /run/postgresql
+    state: present
+  loop: "{{ postgresql_databases }}"
+  loop_control:
+    label: "{{ item.name }}"
+  become_user: postgres
