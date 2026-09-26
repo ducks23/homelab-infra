@@ -9,6 +9,7 @@ Infrastructure and apps for a Proxmox-based homelab.
 | `postgresql/`  | Ansible: PostgreSQL on the `alpine-postgres` VM                         |
 | `go-api/`      | Go REST API, container image on GHCR, deployed to k3s with Kustomize    |
 | `k8s/`         | Loose Kubernetes manifests                                              |
+| `k8s/tls/`     | Let's Encrypt HTTPS: cert-manager + Traefik, Proxmox, DNS on Cloudflare |
 | `writeups/`    | Notes on how things were built                                          |
 
 Each directory has its own README with the details.
@@ -26,6 +27,8 @@ cp k3s-cluster/group_vars/dev/vault.yml.example         k3s-cluster/group_vars/d
 cp postgresql/group_vars/postgres/vault.yml.example     postgresql/group_vars/postgres/vault.yml
 cp go-api/.env.example                                  go-api/.env
 cp go-api/.env.example                                  go-api/.env.prod
+cp k8s/tls/overlays/prod/.env.cloudflare.example         k8s/tls/overlays/prod/.env.cloudflare
+cp k8s/tls/overlays/dev/.env.cloudflare.example          k8s/tls/overlays/dev/.env.cloudflare
 ```
 
 | File | Values | Where to get them |
@@ -37,6 +40,7 @@ cp go-api/.env.example                                  go-api/.env.prod
 | `go-api/.env` | `DB_PASSWORD` (plus `DB_HOST`, etc.) | The dev `app` password from `postgresql/group_vars/postgres/vault.yml`. |
 | `go-api/.env.prod` | `DB_*` | Same keys as `.env`, pointed at the production database and prod password. |
 | `go-api/.ghcr-token` | GitHub PAT (or set `$GHCR_TOKEN`) | Classic token with `write:packages` at <https://github.com/settings/tokens/new>. `printf %s 'ghp_...' > go-api/.ghcr-token && chmod 600 go-api/.ghcr-token` |
+| `k8s/tls/overlays/{prod,dev}/.env.cloudflare` | `api-token` | Cloudflare > My Profile > API Tokens, "Edit zone DNS" template limited to `naboo.party`. One token per cluster. See `k8s/tls/README.md`. |
 
 Optional: encrypt the Ansible vault files with `ansible-vault encrypt <file>` and
 put the vault password in a gitignored `.vault_pass`, then set
