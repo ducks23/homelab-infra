@@ -27,9 +27,9 @@ dev    VIP 192.168.1.20   dev-node1  .21 (cluster-init) · dev-node2  .22 · dev
 - `inventory/hosts.ini` — hosts grouped as `prod_server`/`dev_server`
   (plus empty `*_agent` groups for optional workers).
 - `group_vars/prod/main.yml`, `group_vars/dev/main.yml` — per-cluster `k3s_cluster_name`,
-  `k3s_token` and `kube_vip_address`. Generate a new token with
-  `openssl rand -hex 32`; for anything beyond a lab, encrypt with
-  `ansible-vault encrypt_string`.
+  `k3s_token` and `kube_vip_address`. The token itself comes from 1Password
+  (`group_vars/<env>/secrets.yml`, items `k3s-dev` / `k3s-prod` in the homelab vault;
+  see ../README.md). Generate a new one with `openssl rand -hex 32`.
 - `group_vars/all.yml` — shared settings (k3s channel, disabled components,
   kube-vip version and NIC name `eth0`, firewall).
 

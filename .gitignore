@@ -5,6 +5,7 @@
 .env
 .env.*
 !.env.example
+!*.tpl
 *.tfvars
 !*.tfvars.example
 *.tfstate

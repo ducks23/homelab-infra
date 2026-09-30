@@ -18,7 +18,8 @@ internal/server/          Echo setup, middleware and routes
 ## Run
 
 ```bash
-cp .env.example .env    # set DB_PASSWORD (the `app` password from ../postgresql/group_vars/postgres/vault.yml)
+# Settings come from .env.tpl, with DB_PASSWORD read from 1Password (homelab/postgres-app).
+# Or: cp .env.example .env and set DB_PASSWORD; a local .env wins.
 make run
 ```
 
