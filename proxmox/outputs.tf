@@ -20,3 +20,11 @@ output "clusters" {
     }
   }
 }
+
+output "devbox" {
+  description = "Ubuntu dev box (SSH as 'ubuntu'; remote access over Tailscale)"
+  value = {
+    name = local.devbox_vm.name
+    ip   = local.devbox_vm.ip
+  }
+}
