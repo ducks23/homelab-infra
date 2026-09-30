@@ -96,6 +96,9 @@ resource "proxmox_virtual_environment_vm" "postgres" {
   }
 
   lifecycle {
+    # The image only seeds a new VM's disk. Bumping alpine_version must not rebuild the database VM.
+    ignore_changes = [disk[0].file_id]
+
     # Keep the static IP inside the range reserved for it (DHCP starts at .100).
     precondition {
       condition     = tonumber(split(".", local.postgres_vm.ip)[3]) >= 10 && tonumber(split(".", local.postgres_vm.ip)[3]) <= 99

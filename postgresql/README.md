@@ -18,9 +18,8 @@ static IP and installs your SSH key for the `alpine` user (passwordless `doas`).
 ```bash
 ansible-galaxy collection install -r requirements.yml
 
-cp group_vars/postgres/vault.yml.example group_vars/postgres/vault.yml
-$EDITOR group_vars/postgres/vault.yml          # set a real password (openssl rand -base64 24)
-ansible-vault encrypt group_vars/postgres/vault.yml   # recommended; then add --ask-vault-pass below
+# Passwords come from 1Password (group_vars/postgres/secrets.yml): items postgres-app,
+# postgres-app-prod and postgres-easycabinets in the homelab vault. See ../README.md.
 
 ansible-playbook site.yml
 ```

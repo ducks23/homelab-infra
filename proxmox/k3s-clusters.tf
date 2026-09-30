@@ -45,12 +45,18 @@ locals {
 }
 
 # Proxmox downloads the image itself; it lands next to your other ISOs.
+# "current" is re-published whenever Ubuntu refreshes the image. overwrite = false stops the
+# provider from comparing it with the upstream size on every plan; otherwise each refresh
+# means a re-download, a new file_id, and every VM built from it being replaced. To take a
+# newer image on purpose: terraform apply -replace=proxmox_download_file.ubuntu_noble_cloudimg
+# (existing VMs keep their disks; see ignore_changes on the VMs).
 resource "proxmox_download_file" "ubuntu_noble_cloudimg" {
   node_name    = var.node_name
   datastore_id = var.iso_datastore_id
   content_type = "iso"
   file_name    = "noble-server-cloudimg-amd64.img"
   url          = "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
+  overwrite    = false
 }
 
 # Was `prod_node` before the dev cluster was added; keeps the existing prod VMs from being recreated.
@@ -121,6 +127,9 @@ resource "proxmox_virtual_environment_vm" "node" {
   }
 
   lifecycle {
+    # The image only seeds a new VM's disk. A newer image must not rebuild running nodes.
+    ignore_changes = [disk[0].file_id]
+
     # Keep static IPs inside the range reserved for them (DHCP starts at .100).
     precondition {
       condition     = tonumber(split(".", each.value.ip)[3]) >= 10 && tonumber(split(".", each.value.ip)[3]) <= 99

@@ -18,13 +18,19 @@ KUBECTL       = kubectl --context $(KUBE_CONTEXT)
 # Prod reads its own env file so it can point at a different database than dev.
 PROD_ENV_FILE ?= .env.prod
 
+# Secrets: an env file if you have one, else its committed .tpl twin with the
+# op:// references filled in by 1Password (op inject). Nothing is written to disk.
+ENV_CMD        = if [ -f $(1) ]; then cat $(1); elif [ -f $(1).tpl ]; then op inject -i $(1).tpl; \
+                 else echo "Missing $(1) (and $(1).tpl)" >&2; exit 1; fi
+
 # Container registry (GitHub Container Registry). The token is a classic personal
-# access token with the write:packages scope, read from $$GHCR_TOKEN or the
-# gitignored .ghcr-token file. It is never printed or baked into the image.
+# access token with the write:packages scope, read from $$GHCR_TOKEN, the
+# gitignored .ghcr-token file or 1Password. It is never printed or baked into the image.
 GH_USER       ?= ducks23
 REGISTRY      ?= ghcr.io
 REMOTE_IMAGE   = $(REGISTRY)/$(GH_USER)/$(IMAGE)
-TOKEN_CMD      = if [ -n "$$GHCR_TOKEN" ]; then printf %s "$$GHCR_TOKEN"; else cat .ghcr-token; fi
+TOKEN_CMD      = if [ -n "$$GHCR_TOKEN" ]; then printf %s "$$GHCR_TOKEN"; elif [ -s .ghcr-token ]; then cat .ghcr-token; \
+                 else op read op://homelab/ghcr/token; fi
 
 # Remember whether TAG was given explicitly (promote-prod requires it), then
 # evaluate the default once (`:=`) so build, push and deploy all use the same tag.
@@ -51,8 +57,9 @@ help:
 
 # --- Go ----------------------------------------------------------------------
 
+# Uses .env if there is one (the app loads it), else runs under op run with .env.tpl.
 run:
-	go run ./cmd/server
+	@if [ -f .env ]; then go run ./cmd/server; else op run --env-file=.env.tpl -- go run ./cmd/server; fi
 
 build:
 	go build -o bin/server ./cmd/server
@@ -65,16 +72,14 @@ tidy:
 
 # --- Local Docker ------------------------------------------------------------
 
-.env:
-	@echo "Missing .env. Run: cp .env.example .env and set DB_PASSWORD" >&2; exit 1
-
 docker-build:
 	docker build -t $(IMAGE):local .
 
 # PORT is forced to 8080 after --env-file so the port mapping always matches.
-docker-run: .env docker-build
+docker-run: docker-build
 	-@docker rm -f $(IMAGE) >/dev/null 2>&1
-	docker run -d --name $(IMAGE) --env-file .env -e PORT=8080 -p $(HOST_PORT):8080 $(IMAGE):local
+	@env="$$($(call ENV_CMD,.env))" || exit 1; \
+		printf '%s\n' "$$env" | docker run -d --name $(IMAGE) --env-file /dev/stdin -e PORT=8080 -p $(HOST_PORT):8080 $(IMAGE):local
 	@echo "Running at http://localhost:$(HOST_PORT)  (logs: make docker-logs, stop: make docker-stop)"
 
 docker-stop:
@@ -86,10 +91,9 @@ docker-logs:
 # --- Registry ----------------------------------------------------------------
 
 registry-login:
-	@if [ -z "$$GHCR_TOKEN" ] && [ ! -s .ghcr-token ]; then \
-		echo "No GitHub token. Create a classic PAT with write:packages and save it to .ghcr-token (see README)." >&2; exit 1; \
-	fi
-	@$(TOKEN_CMD) | docker login $(REGISTRY) -u $(GH_USER) --password-stdin
+	@token="$$($(TOKEN_CMD))" && [ -n "$$token" ] || { \
+		echo "No GitHub token: set GHCR_TOKEN, save it to .ghcr-token, or store it in 1Password as homelab/ghcr/token (see README)." >&2; exit 1; }; \
+		printf %s "$$token" | docker login $(REGISTRY) -u $(GH_USER) --password-stdin
 
 # The k3s nodes are amd64; build for that regardless of the host CPU.
 k8s-build:
@@ -112,9 +116,12 @@ k8s-render:
 _rollout:
 	@echo "Deploying $(REMOTE_IMAGE):$(TAG) to context '$(KUBE_CONTEXT)' (overlay: $(OVERLAY))"
 	$(KUBECTL) create namespace $(NAMESPACE) --dry-run=client -o yaml | $(KUBECTL) apply -f -
-	$(KUBECTL) -n $(NAMESPACE) create secret generic go-api-env --from-env-file=$(ENV_FILE) --dry-run=client -o yaml | $(KUBECTL) apply -f -
-	@$(KUBECTL) -n $(NAMESPACE) create secret docker-registry ghcr-pull --docker-server=$(REGISTRY) \
-		--docker-username=$(GH_USER) --docker-password="$$($(TOKEN_CMD))" --dry-run=client -o yaml | $(KUBECTL) apply -f -
+	@echo "Secret go-api-env from $(ENV_FILE)"
+	@env="$$($(call ENV_CMD,$(ENV_FILE)))" || exit 1; \
+		printf '%s\n' "$$env" | $(KUBECTL) -n $(NAMESPACE) create secret generic go-api-env --from-env-file=/dev/stdin --dry-run=client -o yaml | $(KUBECTL) apply -f -
+	@token="$$($(TOKEN_CMD))" && [ -n "$$token" ] || exit 1; \
+		$(KUBECTL) -n $(NAMESPACE) create secret docker-registry ghcr-pull --docker-server=$(REGISTRY) \
+		--docker-username=$(GH_USER) --docker-password="$$token" --dry-run=client -o yaml | $(KUBECTL) apply -f -
 	@tmp=$$(cd "$$(mktemp -d)" && pwd -P) && trap 'rm -rf "$$tmp"' EXIT && \
 		rel=$$(python3 -c 'import os,sys; print(os.path.relpath(sys.argv[1], sys.argv[2]))' "$(CURDIR)/k8s/overlays/$(OVERLAY)" "$$tmp") && \
 		printf 'apiVersion: kustomize.config.k8s.io/v1beta1\nkind: Kustomization\nresources:\n  - %s\nimages:\n  - name: %s\n    newTag: "%s"\n' \
@@ -124,11 +131,8 @@ _rollout:
 	$(KUBECTL) -n $(NAMESPACE) rollout status deployment/go-api --timeout=120s
 	@echo "Deployed: http://$$($(KUBECTL) -n $(NAMESPACE) get ingress go-api -o jsonpath='{.spec.rules[0].host}')/health"
 
-deploy: .env k8s-push
+deploy: k8s-push
 	@$(MAKE) --no-print-directory _rollout KUBE_CONTEXT=dev OVERLAY=dev ENV_FILE=.env TAG=$(TAG)
-
-$(PROD_ENV_FILE):
-	@echo "Missing $(PROD_ENV_FILE). Create it (e.g. cp .env $(PROD_ENV_FILE)) and point DB_* at the production database." >&2; exit 1
 
 confirm-prod:
 	@if [ "$(CONFIRM)" != "yes" ]; then \
@@ -136,12 +140,12 @@ confirm-prod:
 		read answer; [ "$$answer" = "prod" ] || { echo "Aborted."; exit 1; }; \
 	fi
 
-deploy-prod: confirm-prod $(PROD_ENV_FILE) k8s-push
+deploy-prod: confirm-prod k8s-push
 	@$(MAKE) --no-print-directory _rollout KUBE_CONTEXT=prod OVERLAY=prod ENV_FILE=$(PROD_ENV_FILE) TAG=$(TAG)
 
 # Roll out an image that's already in the registry, e.g. the exact tag you just
 # tested on dev, without rebuilding it.
-promote-prod: confirm-prod $(PROD_ENV_FILE) registry-login
+promote-prod: confirm-prod registry-login
 	@[ -n "$(TAG_GIVEN)" ] || { echo "Set the image tag to promote: make promote-prod TAG=<tag>" >&2; exit 1; }
 	@docker buildx imagetools inspect $(REMOTE_IMAGE):$(TAG) >/dev/null 2>&1 || { echo "$(REMOTE_IMAGE):$(TAG) not found in the registry" >&2; exit 1; }
 	@$(MAKE) --no-print-directory _rollout KUBE_CONTEXT=prod OVERLAY=prod ENV_FILE=$(PROD_ENV_FILE) TAG=$(TAG)
