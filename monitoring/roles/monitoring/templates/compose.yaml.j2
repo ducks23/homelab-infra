@@ -46,6 +46,7 @@ services:
       - "3000:3000"
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
       - ./data/grafana:/var/lib/grafana
       - ./secrets/grafana_admin_password:/run/secrets/grafana_admin_password:ro
 

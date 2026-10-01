@@ -1,0 +1,76 @@
+# Grafana's k8s-monitoring chart: Alloy collectors plus kube-state-metrics and node-exporter.
+# Sends cluster metrics, host metrics, pod logs and Kubernetes events to the monitoring VM
+# (../../monitoring). Installed by k3s' built-in Helm controller, so no local helm is needed.
+# CLUSTER is replaced with dev or prod by deploy.sh; don't kubectl apply this file directly.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: k8s-monitoring
+  namespace: kube-system
+spec:
+  repo: https://grafana.github.io/helm-charts
+  chart: k8s-monitoring
+  version: 4.5.2
+  targetNamespace: monitoring
+  createNamespace: true
+  valuesContent: |-
+    cluster:
+      name: CLUSTER
+
+    destinations:
+      prometheus:
+        type: prometheus
+        url: http://192.168.1.60:9090/api/v1/write
+        # Alertmanager sends env=dev alerts less often.
+        extraLabels:
+          env: CLUSTER
+      loki:
+        type: loki
+        url: http://192.168.1.60:3100/loki/api/v1/push
+        extraLabels:
+          env: CLUSTER
+
+    clusterMetrics:
+      enabled: true
+      collector: alloy-metrics
+      # Keep everything; the default allow-lists drop metrics the Grafana dashboards use.
+      kube-state-metrics:
+        metricsTuning:
+          useDefaultAllowList: false
+      cadvisor:
+        metricsTuning:
+          includeMetrics:
+            - container_cpu_cfs_throttled_seconds_total
+            - container_oom_events_total
+            - container_network_receive_errors_total
+            - container_network_transmit_errors_total
+
+    hostMetrics:
+      enabled: true
+      collector: alloy-metrics
+      linuxHosts:
+        enabled: true
+        metricsTuning:
+          useDefaultAllowList: false
+
+    podLogsViaLoki:
+      enabled: true
+      collector: alloy-logs
+
+    clusterEvents:
+      enabled: true
+      collector: alloy-singleton
+
+    collectors:
+      alloy-metrics:
+        presets: [small, clustered, statefulset]
+      alloy-logs:
+        presets: [filesystem-log-reader, daemonset]
+      alloy-singleton:
+        presets: [singleton]
+
+    telemetryServices:
+      kube-state-metrics:
+        deploy: true
+      node-exporter:
+        deploy: true

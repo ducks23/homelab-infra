@@ -25,6 +25,10 @@
     - blackbox
     - loki
     - grafana/provisioning/datasources
+    - grafana/provisioning/dashboards
+    - grafana/dashboards/Homelab
+    - grafana/dashboards/Machines
+    - grafana/dashboards/Kubernetes
 
 # Each image runs as its own non-root user, which must own its data directory.
 - name: Create the data directories
@@ -113,6 +117,42 @@
     dest: "{{ monitoring_dir }}/grafana/provisioning/datasources/datasources.yml"
     mode: "0644"
   notify: restart grafana
+
+- name: Tell Grafana where the dashboards are
+  ansible.builtin.copy:
+    src: dashboard-providers.yml
+    dest: "{{ monitoring_dir }}/grafana/provisioning/dashboards/providers.yml"
+    mode: "0644"
+  notify: restart grafana
+
+# Grafana picks up dashboard file changes by itself within a minute; no restart needed.
+- name: Write the homelab dashboards
+  ansible.builtin.copy:
+    src: dashboards/
+    dest: "{{ monitoring_dir }}/grafana/dashboards/Homelab/"
+    mode: "0644"
+
+- name: Download the community dashboards from grafana.com
+  ansible.builtin.uri:
+    url: "https://grafana.com/api/dashboards/{{ item.id }}/revisions/{{ item.revision }}/download"
+    return_content: true
+  loop: "{{ monitoring_grafana_dashboards }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: monitoring_dashboard_downloads
+  # Read-only; lets --check show what the next step would change.
+  check_mode: false
+
+# Dashboards exported for import ask for their data source as ${DS_PROMETHEUS}; provisioning
+# doesn't fill that in, so point it at the Prometheus data source directly.
+- name: Write the community dashboards
+  ansible.builtin.copy:
+    content: "{{ item.content | replace('${DS_PROMETHEUS}', 'prometheus') }}"
+    dest: "{{ monitoring_dir }}/grafana/dashboards/{{ item.item.folder }}/{{ item.item.name }}.json"
+    mode: "0644"
+  loop: "{{ monitoring_dashboard_downloads.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
 
 - name: Write the compose file
   ansible.builtin.template:

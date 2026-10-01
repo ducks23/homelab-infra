@@ -36,3 +36,13 @@ monitoring_tcp_targets: []
 monitoring_http_targets: []
 
 monitoring_healthchecks_url: ""
+
+# Community dashboards downloaded from grafana.com into a Grafana folder, on top of the
+# homelab ones in files/dashboards. Pin the revision so a re-run doesn't change them.
+monitoring_grafana_dashboards:
+  - { id: 1860, revision: 45, folder: Machines, name: node-exporter-full }
+  - { id: 10347, revision: 5, folder: Machines, name: proxmox }
+  - { id: 15757, revision: 43, folder: Kubernetes, name: k8s-global }
+  - { id: 15758, revision: 46, folder: Kubernetes, name: k8s-namespaces }
+  - { id: 15759, revision: 40, folder: Kubernetes, name: k8s-nodes }
+  - { id: 15760, revision: 41, folder: Kubernetes, name: k8s-pods }

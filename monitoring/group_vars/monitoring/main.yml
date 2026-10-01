@@ -7,6 +7,14 @@ monitoring_alert_email: jesse1517@gmail.com
 # Proxmox host, read through its API by pve-exporter (token in 1Password, see ../README.md).
 monitoring_pve_host: 192.168.1.146
 
+# node_exporter on the Proxmox host and VMs (installed by node-exporter.yml). The k3s nodes
+# send theirs through Alloy (../k8s/monitoring) instead.
+monitoring_node_targets:
+  - { host: pve, address: "192.168.1.146:9100", env: prod }
+  - { host: alpine-postgres, address: "192.168.1.30:9100", env: prod }
+  - { host: minecraft, address: "192.168.1.40:9100", env: prod }
+  - { host: devbox, address: "192.168.1.50:9100", env: dev }
+
 # Every probe target gets a `host` label (alerts about a host's services are muted while the
 # host itself is unreachable) and an `env` label (env=dev alerts repeat once a day, not every 4h).
 

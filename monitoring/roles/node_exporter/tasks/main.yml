@@ -1,0 +1,45 @@
+---
+# Prometheus' node_exporter from the distro's own packages, listening on :9100.
+# The monitoring VM scrapes it (monitoring_node_targets in group_vars/monitoring/main.yml).
+
+- name: Install node_exporter (Debian, Ubuntu, Proxmox)
+  when: ansible_facts['os_family'] == 'Debian'
+  block:
+    - name: Install the package
+      ansible.builtin.apt:
+        name: "{{ ['prometheus-node-exporter'] + node_exporter_extra_packages }}"
+        state: present
+        # The collectors package is only a Recommends; skip it unless asked for above.
+        install_recommends: false
+        update_cache: "{{ node_exporter_apt_update }}"
+        cache_valid_time: 3600
+
+    - name: Enable and start node_exporter
+      ansible.builtin.systemd_service:
+        name: prometheus-node-exporter
+        enabled: true
+        state: started
+
+- name: Install node_exporter (Alpine)
+  when: ansible_facts['os_family'] == 'Alpine'
+  block:
+    - name: Install the package and its OpenRC service
+      community.general.apk:
+        name:
+          - prometheus-node-exporter
+          - prometheus-node-exporter-openrc
+        state: present
+        update_cache: true
+
+    - name: Enable and start node_exporter
+      ansible.builtin.service:
+        name: node-exporter
+        enabled: true
+        state: started
+
+- name: Check that node_exporter answers
+  ansible.builtin.uri:
+    url: "http://{{ ansible_host }}:9100/metrics"
+    return_content: false
+  delegate_to: localhost
+  become: false

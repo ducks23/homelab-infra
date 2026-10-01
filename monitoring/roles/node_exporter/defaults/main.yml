@@ -1,0 +1,8 @@
+---
+# Extra Debian/Ubuntu packages, e.g. prometheus-node-exporter-collectors for pending apt
+# updates (set for the Proxmox host in the inventory).
+node_exporter_extra_packages: []
+
+# Refresh the apt cache first. Off for the Proxmox host, whose enterprise repositories fail
+# to refresh without a subscription; node_exporter comes from Debian's own repository anyway.
+node_exporter_apt_update: true
