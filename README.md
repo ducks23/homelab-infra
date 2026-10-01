@@ -24,7 +24,7 @@ the values never land on disk:
 | ----- | ---------------------- |
 | `proxmox/` | `./tf plan`, `./tf apply`: runs Terraform under `op run` with `op.env` |
 | `k3s-cluster/`, `postgresql/` | `group_vars/*/secrets.yml` use the `community.general.onepassword` lookup |
-| `go-api/`, `../easycabinets` | `make deploy` fills in `.env.tpl` (`.env.prod.tpl` for prod) with `op inject` and pipes it into the Kubernetes secret |
+| `go-api/`, `../easycabinets`, `../workbench` | `make deploy` fills in `.env.tpl` (`.env.prod.tpl` for prod) with `op inject` and pipes it into the Kubernetes secret |
 | `k8s/tls/` | `k8s/tls/cloudflare-secret.sh dev\|prod` puts cert-manager's Cloudflare token in the cluster |
 | GHCR token | both Makefiles fall back to `op read op://homelab/ghcr/token` |
 
@@ -43,6 +43,8 @@ homelab vault. Item titles and field labels must match exactly.
 | `ghcr` | `token` | GitHub classic PAT with `write:packages` |
 | `cloudflare-cert-manager` | `api-token` | Cloudflare API token with Zone:DNS:Edit, for DNS-01 challenges |
 | `easycabinets-google` | `client-id`, `client-secret` | Google OAuth client for EasyCabinets |
+| `postgres-workbench` | `password` | `workbench` role (Workbench planner) |
+| `workbench` | `password`, `session-secret` | Workbench sign-in password, and a random cookie-signing key (`openssl rand -hex 32`) |
 
 New secrets: `openssl rand -hex 32` (k3s tokens) or `openssl rand -base64 24` (passwords).
 Existing ones must be copied over unchanged, or rotated on the server at the same time.
