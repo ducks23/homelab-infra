@@ -1,0 +1,40 @@
+# Managed by Ansible (monitoring/roles/monitoring). Proxmox host, VMs and storage (pve-exporter).
+groups:
+  - name: proxmox
+    rules:
+      - alert: ProxmoxNodeDown
+        expr: pve_up{id=~"node/.+"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Proxmox node {{ $labels.id }} is down"
+
+      # Only VMs set to start on boot are expected to be running.
+      - alert: ProxmoxVMStopped
+        expr: |
+          (pve_up{id=~"qemu/.+|lxc/.+"} == 0)
+            * on (id) group_left (name) pve_guest_info
+            and on (id) pve_onboot_status == 1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "VM {{ $labels.name }} ({{ $labels.id }}) is stopped"
+
+      - alert: ProxmoxStorageFull
+        expr: pve_disk_usage_bytes{id=~"storage/.+"} / pve_disk_size_bytes > 0.85
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Proxmox storage {{ $labels.id }} is {{ $value | humanizePercentage }} full"
+
+      - alert: ProxmoxStorageUnavailable
+        expr: pve_up{id=~"storage/.+"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Proxmox storage {{ $labels.id }} is unavailable"
+          description: For storage/*/truenas, the NFS share is unreachable and backups to it will fail.

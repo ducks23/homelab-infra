@@ -1,0 +1,31 @@
+# Managed by Ansible (minecraft/roles/minecraft). Edit group_vars and re-run instead.
+services:
+  minecraft:
+    image: {{ minecraft_image }}
+    container_name: minecraft
+    restart: unless-stopped
+    ports:
+      - "{{ minecraft_port }}:25565"
+    environment:
+      EULA: "TRUE"
+      TYPE: "{{ minecraft_type }}"
+      VERSION: "{{ minecraft_version }}"
+      MEMORY: "{{ minecraft_memory }}"
+      MOTD: "{{ minecraft_motd }}"
+      DIFFICULTY: "{{ minecraft_difficulty }}"
+      MAX_PLAYERS: "{{ minecraft_max_players }}"
+      VIEW_DISTANCE: "{{ minecraft_view_distance }}"
+{% if minecraft_whitelist %}
+      ENABLE_WHITELIST: "true"
+      ENFORCE_WHITELIST: "true"
+      WHITELIST: "{{ minecraft_whitelist | join(',') }}"
+{% endif %}
+{% if minecraft_ops %}
+      OPS: "{{ minecraft_ops | join(',') }}"
+{% endif %}
+      TZ: "America/Los_Angeles"
+    volumes:
+      - ./data:/data
+    # Lets `docker attach minecraft` reach the server console.
+    stdin_open: true
+    tty: true

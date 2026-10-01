@@ -61,5 +61,34 @@ connect to its own database, so the dev credentials can't reach prod data.
   changes only reload it.
 - Upgrading to a new major version is not automatic (Alpine's `postgresql-common` doesn't run
   `pg_upgrade` for you). Changing `postgresql_version` would initialise an empty new cluster.
-- No backups are configured. Data lives on the VM's 20 GB disk; add `pg_dump` or Proxmox
-  backups before storing anything you can't rebuild.
+- Backups: see below.
+
+## Backups
+
+The `postgresql_backup` role runs `/usr/local/bin/pg-backup` from cron every night at
+09:30 UTC (02:30 Pacific). It writes one `pg_dump -Fc` per database plus `globals.sql`
+(roles and their password hashes) to `<YYYY-MM-DD>/` on a TrueNAS NFS share mounted at
+`/mnt/pg-backups`, and keeps 14 days (`roles/postgresql_backup/defaults/main.yml`). If the
+share isn't mounted it fails instead of filling the VM's disk. Results go to syslog:
+`grep pg-backup /var/log/messages`.
+
+**One-time TrueNAS setup** (before running the playbook):
+
+1. Datasets > `main` > Add Dataset: name `pg-backups`, defaults otherwise.
+2. Shares > NFS > Add: path `/mnt/main/pg-backups`, Hosts `192.168.1.30`, and under
+   Advanced, Maproot User = `root`, Maproot Group = `root` (the script writes as root).
+3. Optional: Data Protection > Periodic Snapshot Task on `main/pg-backups` for history
+   beyond 14 days.
+
+It's a separate dataset from the Proxmox share so this VM can't reach the VM images.
+
+Run a backup now: `ssh alpine@192.168.1.30 doas pg-backup`
+
+Restore one database (drops and recreates its objects):
+
+```bash
+doas su postgres -s /bin/sh -c \
+  'pg_restore --clean --if-exists -d easycabinets /mnt/pg-backups/2026-10-01/easycabinets.dump'
+```
+
+On a fresh server, load `globals.sql` with `psql -f` first so the owning roles exist.

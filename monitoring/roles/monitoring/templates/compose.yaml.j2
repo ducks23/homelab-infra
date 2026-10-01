@@ -1,0 +1,93 @@
+# Managed by Ansible (monitoring/roles/monitoring). Edit group_vars and re-run instead.
+services:
+  prometheus:
+    image: {{ monitoring_prometheus_image }}
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time={{ monitoring_prometheus_retention_time }}
+      - --storage.tsdb.retention.size={{ monitoring_prometheus_retention_size }}
+      # Lets Grafana Alloy on the k3s clusters push metrics in.
+      - --web.enable-remote-write-receiver
+      - --web.external-url=http://{{ ansible_host }}:9090
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - ./data/prometheus:/prometheus
+
+  alertmanager:
+    image: {{ monitoring_alertmanager_image }}
+    container_name: alertmanager
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+      - --web.external-url=http://{{ ansible_host }}:9093
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager:/etc/alertmanager:ro
+      - ./data/alertmanager:/alertmanager
+      - ./secrets/smtp_password:/run/secrets/smtp_password:ro
+      - ./secrets/healthchecks_url:/run/secrets/healthchecks_url:ro
+
+  grafana:
+    image: {{ monitoring_grafana_image }}
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
+      GF_SERVER_ROOT_URL: http://{{ ansible_host }}:3000
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
+      - ./data/grafana:/var/lib/grafana
+      - ./secrets/grafana_admin_password:/run/secrets/grafana_admin_password:ro
+
+  loki:
+    image: {{ monitoring_loki_image }}
+    container_name: loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki.yaml
+    # Receives logs pushed by Grafana Alloy.
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki:/etc/loki:ro
+      - ./data/loki:/loki
+
+  blackbox:
+    image: {{ monitoring_blackbox_image }}
+    container_name: blackbox
+    restart: unless-stopped
+    command: --config.file=/etc/blackbox/blackbox.yml
+    # Lets the non-root exporter send pings over unprivileged ICMP sockets.
+    sysctls:
+      net.ipv4.ping_group_range: "0 2147483647"
+    volumes:
+      - ./blackbox:/etc/blackbox:ro
+
+  pve-exporter:
+    image: {{ monitoring_pve_exporter_image }}
+    container_name: pve-exporter
+    restart: unless-stopped
+    volumes:
+      - ./secrets/pve.yml:/etc/prometheus/pve.yml:ro
+
+  # Metrics for this VM itself. Runs in the host's namespaces so it sees the real
+  # filesystems, network and processes; Prometheus scrapes it at {{ ansible_host }}:9100.
+  node-exporter:
+    image: {{ monitoring_node_exporter_image }}
+    container_name: node-exporter
+    restart: unless-stopped
+    command: --path.rootfs=/host
+    network_mode: host
+    pid: host
+    volumes:
+      - /:/host:ro,rslave

@@ -1,0 +1,48 @@
+---
+# Image versions. Bump them here and re-run the playbook to upgrade.
+monitoring_prometheus_image: "prom/prometheus:v3.13.4"
+monitoring_alertmanager_image: "prom/alertmanager:v0.34.1"
+monitoring_grafana_image: "grafana/grafana:13.2.3"
+monitoring_loki_image: "grafana/loki:3.7.8"
+monitoring_blackbox_image: "prom/blackbox-exporter:v0.28.0"
+monitoring_node_exporter_image: "prom/node-exporter:v1.12.1"
+monitoring_pve_exporter_image: "prompve/prometheus-pve-exporter:3.10.0"
+
+# Where the compose file, config and data live on the VM.
+monitoring_dir: /srv/monitoring
+
+# How long to keep data. Prometheus also stops at the size cap, whichever comes first.
+monitoring_prometheus_retention_time: 30d
+monitoring_prometheus_retention_size: 35GB
+monitoring_loki_retention: 336h  # 14 days
+
+# Alert email. Sent through Gmail's SMTP server with an app password.
+monitoring_alert_email: ""
+monitoring_smtp_host: "smtp.gmail.com:587"
+monitoring_smtp_username: "{{ monitoring_alert_email }}"
+monitoring_smtp_from: "Homelab <{{ monitoring_alert_email }}>"
+
+# Proxmox API token pve-exporter signs in with (read-only PVEAuditor role).
+monitoring_pve_host: ""
+monitoring_pve_user: "monitoring@pve"
+monitoring_pve_token_name: "exporter"
+
+# node_exporter endpoints to scrape. The monitoring VM's own exporter is always included.
+monitoring_node_targets: []
+
+# Blackbox probes; see group_vars/monitoring/main.yml for the format.
+monitoring_ping_targets: []
+monitoring_tcp_targets: []
+monitoring_http_targets: []
+
+monitoring_healthchecks_url: ""
+
+# Community dashboards downloaded from grafana.com into a Grafana folder, on top of the
+# homelab ones in files/dashboards. Pin the revision so a re-run doesn't change them.
+monitoring_grafana_dashboards:
+  - { id: 1860, revision: 45, folder: Machines, name: node-exporter-full }
+  - { id: 10347, revision: 5, folder: Machines, name: proxmox }
+  - { id: 15757, revision: 43, folder: Kubernetes, name: k8s-global }
+  - { id: 15758, revision: 46, folder: Kubernetes, name: k8s-namespaces }
+  - { id: 15759, revision: 40, folder: Kubernetes, name: k8s-nodes }
+  - { id: 15760, revision: 41, folder: Kubernetes, name: k8s-pods }

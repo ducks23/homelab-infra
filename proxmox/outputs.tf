@@ -20,3 +20,27 @@ output "clusters" {
     }
   }
 }
+
+output "minecraft" {
+  description = "Minecraft server VM (SSH as 'ubuntu'; configure with ../minecraft)"
+  value = {
+    name = local.minecraft_vm.name
+    ip   = local.minecraft_vm.ip
+  }
+}
+
+output "devbox" {
+  description = "Ubuntu dev box (SSH as 'ubuntu'; remote access over Tailscale)"
+  value = {
+    name = local.devbox_vm.name
+    ip   = local.devbox_vm.ip
+  }
+}
+
+output "monitoring" {
+  description = "Monitoring VM (SSH as 'ubuntu'; configure with ../monitoring)"
+  value = {
+    name = local.monitoring_vm.name
+    ip   = local.monitoring_vm.ip
+  }
+}
