@@ -44,6 +44,8 @@ homelab vault. Item titles and field labels must match exactly.
 | `cloudflare-cert-manager` | `api-token` | Cloudflare API token with Zone:DNS:Edit, for DNS-01 challenges |
 | `easycabinets-google` | `client-id`, `client-secret` | Google OAuth client for EasyCabinets |
 | `postgres-workbench` | `password` | `workbench` role (Workbench planner) |
+| `postgres-patchwork` | `password` | `patchwork` role (Patchwork Planner) |
+| `patchwork` | `password`, `secret-key` | Patchwork Planner sign-in password, and Django's `SECRET_KEY` (`openssl rand -hex 32`) |
 | `workbench` | `password`, `session-secret` | Workbench sign-in password, and a random cookie-signing key (`openssl rand -hex 32`) |
 
 New secrets: `openssl rand -hex 32` (k3s tokens) or `openssl rand -base64 24` (passwords).
