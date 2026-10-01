@@ -1,0 +1,35 @@
+---
+- name: Install Docker and Compose from Ubuntu's repositories
+  ansible.builtin.apt:
+    name:
+      - docker.io
+      - docker-compose-v2
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Enable and start Docker
+  ansible.builtin.systemd_service:
+    name: docker
+    enabled: true
+    state: started
+
+- name: Create the server directory
+  ansible.builtin.file:
+    path: "{{ minecraft_dir }}/data"
+    state: directory
+    mode: "0755"
+
+- name: Write the compose file
+  ansible.builtin.template:
+    src: compose.yaml.j2
+    dest: "{{ minecraft_dir }}/compose.yaml"
+    mode: "0644"
+
+# Pull and start. Idempotent: compose recreates the container only when compose.yaml changed.
+- name: Start the server
+  ansible.builtin.command:
+    cmd: docker compose up --detach --pull missing
+    chdir: "{{ minecraft_dir }}"
+  register: minecraft_up
+  changed_when: "'Started' in minecraft_up.stderr or 'Recreated' in minecraft_up.stderr"
