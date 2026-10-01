@@ -1,0 +1,39 @@
+#!/bin/sh
+# {{ ansible_managed }}
+# Nightly logical backup: one pg_dump (custom format) per database plus the roles
+# (pg_dumpall --globals-only), into <share>/<YYYY-MM-DD>/. Logs to syslog as "pg-backup".
+set -eu
+umask 077  # globals.sql holds password hashes
+
+DEST="{{ postgresql_backup_mount }}"
+KEEP_DAYS="{{ postgresql_backup_keep_days }}"
+
+log() { logger -t pg-backup "$*"; echo "$*"; }
+fail() { logger -t pg-backup -p user.err "FAILED: $*"; echo "FAILED: $*" >&2; exit 1; }
+as_postgres() { su postgres -s /bin/sh -c "$1"; }
+
+# Never fall back to writing on the VM's own disk if the share isn't mounted.
+mountpoint -q "$DEST" || fail "$DEST is not mounted"
+
+day=$(date -u +%Y-%m-%d)
+tmp="$DEST/.in-progress-$day"
+rm -rf "$tmp"
+mkdir -p "$tmp"
+
+as_postgres "pg_dumpall --globals-only" > "$tmp/globals.sql" || fail "globals"
+
+dbs=$(as_postgres "psql -AtX -c \"SELECT datname FROM pg_database WHERE NOT datistemplate AND datname <> 'postgres' ORDER BY 1\"") \
+  || fail "listing databases"
+for db in $dbs; do
+  as_postgres "pg_dump -Fc '$db'" > "$tmp/$db.dump" || fail "pg_dump $db"
+done
+
+# Only replace the day's directory once every dump has succeeded.
+rm -rf "${DEST:?}/$day"
+mv "$tmp" "$DEST/$day"
+
+# Prune day directories older than KEEP_DAYS, and anything left by failed runs.
+find "$DEST" -mindepth 1 -maxdepth 1 -type d \( -name '20??-??-??' -o -name '.in-progress-*' \) \
+  -mtime +"$KEEP_DAYS" -exec rm -rf {} +
+
+log "OK: $(echo $dbs | wc -w) databases -> $DEST/$day ($(du -sh "$DEST/$day" | cut -f1))"

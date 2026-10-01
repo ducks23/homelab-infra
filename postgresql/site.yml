@@ -40,3 +40,4 @@
   become: true
   roles:
     - postgresql
+    - postgresql_backup

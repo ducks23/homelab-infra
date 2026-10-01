@@ -1,0 +1,42 @@
+---
+- name: Install the NFS client
+  community.general.apk:
+    name: nfs-utils
+    state: present
+
+# netmount mounts the _netdev fstab entries at boot, once networking is up.
+- name: Mount network filesystems at boot
+  ansible.builtin.service:
+    name: netmount
+    enabled: true
+
+- name: Mount the backup share
+  ansible.posix.mount:
+    path: "{{ postgresql_backup_mount }}"
+    src: "{{ postgresql_backup_nfs_server }}:{{ postgresql_backup_nfs_export }}"
+    fstype: nfs
+    opts: "{{ postgresql_backup_nfs_opts }}"
+    state: mounted
+
+- name: Install the backup script
+  ansible.builtin.template:
+    src: pg-backup.sh.j2
+    dest: /usr/local/bin/pg-backup
+    owner: root
+    group: root
+    mode: "0755"
+
+# Alpine's image ships busybox crond but doesn't start it.
+- name: Enable crond at boot and start it
+  ansible.builtin.service:
+    name: crond
+    enabled: true
+    state: started
+
+- name: Schedule the nightly backup
+  ansible.builtin.cron:
+    name: postgresql nightly backup
+    minute: "{{ postgresql_backup_minute }}"
+    hour: "{{ postgresql_backup_hour }}"
+    job: /usr/local/bin/pg-backup
+    user: root

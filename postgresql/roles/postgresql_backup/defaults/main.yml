@@ -1,0 +1,16 @@
+---
+# NFS share the dumps go to: a dedicated TrueNAS dataset exported only to this VM
+# (see ../../README.md, "Backups"). Kept separate from the Proxmox share so this VM
+# never has access to the Proxmox VM images.
+postgresql_backup_nfs_server: 192.168.1.218
+postgresql_backup_nfs_export: /mnt/main/pg-backups
+postgresql_backup_nfs_opts: "rw,vers=4.2,noatime,_netdev"
+postgresql_backup_mount: /mnt/pg-backups
+
+# When the nightly dump runs (crond, VM clock is UTC). 09:30 UTC is 02:30 Pacific (PDT).
+postgresql_backup_minute: "30"
+postgresql_backup_hour: "9"
+
+# Days of nightly dumps to keep on the share. Older day directories are deleted after a
+# successful run. TrueNAS snapshots on the dataset can keep history beyond this.
+postgresql_backup_keep_days: 14
