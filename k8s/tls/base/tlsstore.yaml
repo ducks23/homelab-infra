@@ -1,0 +1,10 @@
+# Makes the wildcard cert Traefik's default, so an Ingress only needs the
+# router.tls annotation and no secretName of its own.
+apiVersion: traefik.io/v1alpha1
+kind: TLSStore
+metadata:
+  name: default
+  namespace: kube-system
+spec:
+  defaultCertificate:
+    secretName: wildcard-tls

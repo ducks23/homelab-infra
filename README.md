@@ -10,54 +10,43 @@ Infrastructure and apps for a Proxmox-based homelab.
 | `minecraft/`   | Ansible: Minecraft Java server (Docker) on the `minecraft` VM           |
 | `monitoring/`  | Ansible: Prometheus, Grafana, Loki and email alerts on the `monitoring` VM, node_exporter on the others |
 | `go-api/`      | Go REST API, container image on GHCR, deployed to k3s with Kustomize    |
-| `k8s/`         | Loose Kubernetes manifests, and Alloy for monitoring (`k8s/monitoring`) |
+| `k8s/`         | Loose Kubernetes manifests                                              |
+| `k8s/tls/`     | Let's Encrypt HTTPS: cert-manager + Traefik, Proxmox, DNS on Cloudflare |
 | `writeups/`    | Notes on how things were built                                          |
 
 Each directory has its own README with the details.
 
 ## Secrets
 
-No secrets are committed. They live in 1Password, in a vault named **homelab**, and
-the repo holds only `op://` references to them. The tools read them at run time, so
-the values never land on disk:
+No secrets are committed. Every secret file is gitignored and has a committed
+`*.example` next to it. After cloning, copy each example to its real name and
+fill in the values:
 
-| Where | How it reads 1Password |
-| ----- | ---------------------- |
-| `proxmox/` | `./tf plan`, `./tf apply`: runs Terraform under `op run` with `op.env` |
-| `k3s-cluster/`, `postgresql/`, `monitoring/` | `group_vars/*/secrets.yml` use the `community.general.onepassword` lookup |
-| `go-api/`, `../easycabinets`, `../workbench` | `make deploy` fills in `.env.tpl` (`.env.prod.tpl` for prod) with `op inject` and pipes it into the Kubernetes secret |
-| `k8s/tls/` | `k8s/tls/cloudflare-secret.sh dev\|prod` puts cert-manager's Cloudflare token in the cluster |
-| GHCR token | both Makefiles fall back to `op read op://homelab/ghcr/token` |
+```bash
+cp proxmox/terraform.tfvars.example                     proxmox/terraform.tfvars
+cp k3s-cluster/group_vars/prod/vault.yml.example        k3s-cluster/group_vars/prod/vault.yml
+cp k3s-cluster/group_vars/dev/vault.yml.example         k3s-cluster/group_vars/dev/vault.yml
+cp postgresql/group_vars/postgres/vault.yml.example     postgresql/group_vars/postgres/vault.yml
+cp go-api/.env.example                                  go-api/.env
+cp go-api/.env.example                                  go-api/.env.prod
+cp k8s/tls/overlays/prod/.env.cloudflare.example         k8s/tls/overlays/prod/.env.cloudflare
+cp k8s/tls/overlays/dev/.env.cloudflare.example          k8s/tls/overlays/dev/.env.cloudflare
+```
 
-**One-time setup:** in the 1Password app, turn on Settings > Developer > *Integrate with
-1Password CLI* (the CLI then signs in with Touch ID), then create these items in the
-homelab vault. Item titles and field labels must match exactly.
+| File | Values | Where to get them |
+| ---- | ------ | ----------------- |
+| `proxmox/terraform.tfvars` | `proxmox_api_token` | Proxmox UI: Datacenter > Permissions > API Tokens. Format `user@realm!tokenid=secret`. |
+| `k3s-cluster/group_vars/prod/vault.yml` | `vault_k3s_token` | Join token for the prod cluster: `openssl rand -hex 32`. Must match the token the running cluster was installed with. |
+| `k3s-cluster/group_vars/dev/vault.yml` | `vault_k3s_token` | Same, for the dev cluster. Use a different value from prod. |
+| `postgresql/group_vars/postgres/vault.yml` | `vault_postgresql_app_password`, `vault_postgresql_app_prod_password` | Passwords for the `app` (dev) and prod database roles: `openssl rand -base64 24`. |
+| `go-api/.env` | `DB_PASSWORD` (plus `DB_HOST`, etc.) | The dev `app` password from `postgresql/group_vars/postgres/vault.yml`. |
+| `go-api/.env.prod` | `DB_*` | Same keys as `.env`, pointed at the production database and prod password. |
+| `go-api/.ghcr-token` | GitHub PAT (or set `$GHCR_TOKEN`) | Classic token with `write:packages` at <https://github.com/settings/tokens/new>. `printf %s 'ghp_...' > go-api/.ghcr-token && chmod 600 go-api/.ghcr-token` |
+| `k8s/tls/overlays/{prod,dev}/.env.cloudflare` | `api-token` | Cloudflare > My Profile > API Tokens, "Edit zone DNS" template limited to `naboo.party`. One token per cluster. See `k8s/tls/README.md`. |
 
-| Item | Field | Value |
-| ---- | ----- | ----- |
-| `proxmox-terraform` | `api-token` | Proxmox API token, `user@realm!tokenid=secret` (Datacenter > Permissions > API Tokens) |
-| `k3s-dev` | `token` | dev cluster join token; must match the running cluster |
-| `k3s-prod` | `token` | prod cluster join token; must match the running cluster |
-| `postgres-app` | `password` | `app` role (dev databases) |
-| `postgres-app-prod` | `password` | `app_prod` role |
-| `postgres-easycabinets` | `password` | `easycabinets` role |
-| `ghcr` | `token` | GitHub classic PAT with `write:packages` |
-| `cloudflare-cert-manager` | `api-token` | Cloudflare API token with Zone:DNS:Edit, for DNS-01 challenges |
-| `easycabinets-google` | `client-id`, `client-secret` | Google OAuth client for EasyCabinets |
-| `postgres-workbench` | `password` | `workbench` role (Workbench planner) |
-| `workbench` | `password`, `session-secret` | Workbench sign-in password, and a random cookie-signing key (`openssl rand -hex 32`) |
-| `alertmanager-smtp` | `password` | Gmail app password that alert emails are sent with |
-| `grafana` | `admin-password` | Grafana `admin` password |
-| `proxmox-monitoring` | `token-secret` | Secret of the read-only `monitoring@pve!exporter` Proxmox API token (see monitoring/README.md) |
-| `healthchecks` | `watchdog-url` | Optional: Healthchecks.io ping URL for the alerting dead man's switch |
-
-New secrets: `openssl rand -hex 32` (k3s tokens) or `openssl rand -base64 24` (passwords).
-Existing ones must be copied over unchanged, or rotated on the server at the same time.
-
-**Local overrides:** if one of the old gitignored files exists, it still wins over
-1Password: `terraform.tfvars` (a `proxmox_api_token` line), `group_vars/*/vault.yml`,
-`.env` / `.env.prod`, `.ghcr-token`. The `*.example` files show their format. Normally
-none of them exist.
+Optional: encrypt the Ansible vault files with `ansible-vault encrypt <file>` and
+put the vault password in a gitignored `.vault_pass`, then set
+`vault_password_file = .vault_pass` in that project's `ansible.cfg`.
 
 ### Generated, never committed
 

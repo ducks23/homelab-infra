@@ -1,0 +1,18 @@
+# Extra values for the Traefik Helm chart k3s installs; k3s merges this in and
+# redeploys Traefik. Redirects every plain-HTTP request to HTTPS. Key layout is
+# for chart v40 (k3s 2026); older charts used ports.web.redirections.
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    ports:
+      web:
+        http:
+          redirections:
+            entryPoint:
+              to: websecure
+              scheme: https
+              permanent: true
