@@ -1,0 +1,21 @@
+# Managed by Ansible (monitoring/roles/monitoring). Linux hosts (node_exporter).
+groups:
+  - name: node
+    rules:
+      - alert: HostDiskFull
+        expr: |
+          node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"}
+            / node_filesystem_size_bytes < 0.15
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }}: {{ $labels.mountpoint }} has {{ $value | humanizePercentage }} free"
+
+      - alert: HostMemoryLow
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.10
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }} has {{ $value | humanizePercentage }} memory available"

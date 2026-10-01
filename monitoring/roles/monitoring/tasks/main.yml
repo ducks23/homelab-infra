@@ -1,0 +1,130 @@
+---
+- name: Install Docker and Compose from Ubuntu's repositories
+  ansible.builtin.apt:
+    name:
+      - docker.io
+      - docker-compose-v2
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Enable and start Docker
+  ansible.builtin.systemd_service:
+    name: docker
+    enabled: true
+    state: started
+
+- name: Create the config directories
+  ansible.builtin.file:
+    path: "{{ monitoring_dir }}/{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - prometheus/rules
+    - alertmanager
+    - blackbox
+    - loki
+    - grafana/provisioning/datasources
+
+# Each image runs as its own non-root user, which must own its data directory.
+- name: Create the data directories
+  ansible.builtin.file:
+    path: "{{ monitoring_dir }}/data/{{ item.name }}"
+    state: directory
+    owner: "{{ item.uid }}"
+    group: "{{ item.uid }}"
+    mode: "0750"
+  loop:
+    - { name: prometheus, uid: 65534 }
+    - { name: alertmanager, uid: 65534 }
+    - { name: grafana, uid: 472 }
+    - { name: loki, uid: 10001 }
+
+# The containers get these as single-file bind mounts, so the files themselves must be
+# readable by the containers' users; the 0700 directory keeps everyone else on the VM out.
+- name: Create the secrets directory
+  ansible.builtin.file:
+    path: "{{ monitoring_dir }}/secrets"
+    state: directory
+    mode: "0700"
+
+- name: Write the secrets
+  ansible.builtin.copy:
+    content: "{{ item.content }}"
+    dest: "{{ monitoring_dir }}/secrets/{{ item.name }}"
+    mode: "0444"
+  loop:
+    - { name: smtp_password, content: "{{ monitoring_smtp_password }}", service: alertmanager }
+    - { name: healthchecks_url, content: "{{ monitoring_healthchecks_url }}", service: alertmanager }
+    - { name: grafana_admin_password, content: "{{ monitoring_grafana_admin_password }}", service: grafana }
+    - name: pve.yml
+      service: pve-exporter
+      content: |
+        default:
+          user: "{{ monitoring_pve_user }}"
+          token_name: "{{ monitoring_pve_token_name }}"
+          token_value: "{{ monitoring_pve_token_secret }}"
+          # Proxmox's default certificate is self-signed.
+          verify_ssl: false
+  loop_control:
+    label: "{{ item.name }}"
+  no_log: true
+  notify: "restart {{ item.service }}"
+
+- name: Write the Prometheus config
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: "{{ monitoring_dir }}/prometheus/prometheus.yml"
+    mode: "0644"
+  notify: reload prometheus
+
+# Copied, not templated: the rules use Prometheus' own {{ $labels }} templating.
+- name: Write the alert rules
+  ansible.builtin.copy:
+    src: rules/
+    dest: "{{ monitoring_dir }}/prometheus/rules/"
+    mode: "0644"
+  notify: reload prometheus
+
+- name: Write the Alertmanager config
+  ansible.builtin.template:
+    src: alertmanager.yml.j2
+    dest: "{{ monitoring_dir }}/alertmanager/alertmanager.yml"
+    mode: "0644"
+  notify: restart alertmanager
+
+- name: Write the blackbox exporter config
+  ansible.builtin.copy:
+    src: blackbox.yml
+    dest: "{{ monitoring_dir }}/blackbox/blackbox.yml"
+    mode: "0644"
+  notify: restart blackbox
+
+- name: Write the Loki config
+  ansible.builtin.template:
+    src: loki.yaml.j2
+    dest: "{{ monitoring_dir }}/loki/loki.yaml"
+    mode: "0644"
+  notify: restart loki
+
+- name: Write the Grafana datasources
+  ansible.builtin.copy:
+    src: datasources.yml
+    dest: "{{ monitoring_dir }}/grafana/provisioning/datasources/datasources.yml"
+    mode: "0644"
+  notify: restart grafana
+
+- name: Write the compose file
+  ansible.builtin.template:
+    src: compose.yaml.j2
+    dest: "{{ monitoring_dir }}/compose.yaml"
+    mode: "0644"
+
+# Pull and start. Idempotent: compose recreates a container only when its part of
+# compose.yaml changed. Config-only changes are picked up by the handlers.
+- name: Start the stack
+  ansible.builtin.command:
+    cmd: docker compose up --detach --pull missing --remove-orphans
+    chdir: "{{ monitoring_dir }}"
+  register: monitoring_up
+  changed_when: "'Started' in monitoring_up.stderr or 'Recreated' in monitoring_up.stderr"

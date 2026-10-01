@@ -36,3 +36,11 @@ output "devbox" {
     ip   = local.devbox_vm.ip
   }
 }
+
+output "monitoring" {
+  description = "Monitoring VM (SSH as 'ubuntu'; configure with ../monitoring)"
+  value = {
+    name = local.monitoring_vm.name
+    ip   = local.monitoring_vm.ip
+  }
+}

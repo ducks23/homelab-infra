@@ -1,0 +1,31 @@
+---
+# Prometheus re-reads its config and rules on SIGHUP, without losing in-flight state.
+- name: reload prometheus
+  ansible.builtin.command:
+    cmd: docker compose kill --signal SIGHUP prometheus
+    chdir: "{{ monitoring_dir }}"
+
+- name: restart alertmanager
+  ansible.builtin.command:
+    cmd: docker compose restart alertmanager
+    chdir: "{{ monitoring_dir }}"
+
+- name: restart blackbox
+  ansible.builtin.command:
+    cmd: docker compose restart blackbox
+    chdir: "{{ monitoring_dir }}"
+
+- name: restart loki
+  ansible.builtin.command:
+    cmd: docker compose restart loki
+    chdir: "{{ monitoring_dir }}"
+
+- name: restart grafana
+  ansible.builtin.command:
+    cmd: docker compose restart grafana
+    chdir: "{{ monitoring_dir }}"
+
+- name: restart pve-exporter
+  ansible.builtin.command:
+    cmd: docker compose restart pve-exporter
+    chdir: "{{ monitoring_dir }}"

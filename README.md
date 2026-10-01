@@ -4,10 +4,11 @@ Infrastructure and apps for a Proxmox-based homelab.
 
 | Directory      | What it is                                                              |
 | -------------- | ----------------------------------------------------------------------- |
-| `proxmox/`     | Terraform: VMs for the k3s clusters, PostgreSQL and Minecraft           |
+| `proxmox/`     | Terraform: VMs for the k3s clusters, PostgreSQL, Minecraft, monitoring  |
 | `k3s-cluster/` | Ansible: installs k3s (prod and dev clusters) with a kube-vip API VIP   |
 | `postgresql/`  | Ansible: PostgreSQL on the `alpine-postgres` VM, nightly dumps to TrueNAS |
 | `minecraft/`   | Ansible: Minecraft Java server (Docker) on the `minecraft` VM           |
+| `monitoring/`  | Ansible: Prometheus, Grafana, Loki and email alerts on the `monitoring` VM |
 | `go-api/`      | Go REST API, container image on GHCR, deployed to k3s with Kustomize    |
 | `k8s/`         | Loose Kubernetes manifests                                              |
 | `writeups/`    | Notes on how things were built                                          |
@@ -23,7 +24,7 @@ the values never land on disk:
 | Where | How it reads 1Password |
 | ----- | ---------------------- |
 | `proxmox/` | `./tf plan`, `./tf apply`: runs Terraform under `op run` with `op.env` |
-| `k3s-cluster/`, `postgresql/` | `group_vars/*/secrets.yml` use the `community.general.onepassword` lookup |
+| `k3s-cluster/`, `postgresql/`, `monitoring/` | `group_vars/*/secrets.yml` use the `community.general.onepassword` lookup |
 | `go-api/`, `../easycabinets`, `../workbench` | `make deploy` fills in `.env.tpl` (`.env.prod.tpl` for prod) with `op inject` and pipes it into the Kubernetes secret |
 | `k8s/tls/` | `k8s/tls/cloudflare-secret.sh dev\|prod` puts cert-manager's Cloudflare token in the cluster |
 | GHCR token | both Makefiles fall back to `op read op://homelab/ghcr/token` |
@@ -45,6 +46,10 @@ homelab vault. Item titles and field labels must match exactly.
 | `easycabinets-google` | `client-id`, `client-secret` | Google OAuth client for EasyCabinets |
 | `postgres-workbench` | `password` | `workbench` role (Workbench planner) |
 | `workbench` | `password`, `session-secret` | Workbench sign-in password, and a random cookie-signing key (`openssl rand -hex 32`) |
+| `alertmanager-smtp` | `password` | Gmail app password that alert emails are sent with |
+| `grafana` | `admin-password` | Grafana `admin` password |
+| `proxmox-monitoring` | `token-secret` | Secret of the read-only `monitoring@pve!exporter` Proxmox API token (see monitoring/README.md) |
+| `healthchecks` | `watchdog-url` | Optional: Healthchecks.io ping URL for the alerting dead man's switch |
 
 New secrets: `openssl rand -hex 32` (k3s tokens) or `openssl rand -base64 24` (passwords).
 Existing ones must be copied over unchanged, or rotated on the server at the same time.
