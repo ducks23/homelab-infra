@@ -4,10 +4,9 @@ Infrastructure and apps for a Proxmox-based homelab.
 
 | Directory      | What it is                                                              |
 | -------------- | ----------------------------------------------------------------------- |
-| `proxmox/`     | Terraform: VMs for the k3s clusters, PostgreSQL, Minecraft, monitoring  |
+| `proxmox/`     | Terraform: VMs for the k3s clusters, PostgreSQL and monitoring          |
 | `k3s-cluster/` | Ansible: installs k3s (prod and dev clusters) with a kube-vip API VIP   |
 | `postgresql/`  | Ansible: PostgreSQL on the `alpine-postgres` VM, nightly dumps to TrueNAS |
-| `minecraft/`   | Ansible: Minecraft Java server (Docker) on the `minecraft` VM           |
 | `monitoring/`  | Ansible: Prometheus, Grafana, Loki and email alerts on the `monitoring` VM, node_exporter on the others |
 | `go-api/`      | Go REST API, container image on GHCR, deployed to k3s with Kustomize    |
 | `k8s/`         | Loose Kubernetes manifests                                              |
