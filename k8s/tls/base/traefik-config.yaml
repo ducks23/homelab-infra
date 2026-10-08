@@ -1,6 +1,10 @@
 # Extra values for the Traefik Helm chart k3s installs; k3s merges this in and
 # redeploys Traefik. Redirects every plain-HTTP request to HTTPS. Key layout is
 # for chart v40 (k3s 2026); older charts used ports.web.redirections.
+# The dashboard is routed on the internal "traefik" entrypoint (:8080) only, not
+# through the LoadBalancer. Reach it with:
+#   kubectl -n kube-system port-forward deploy/traefik 9000:8080
+#   open http://localhost:9000/dashboard/
 apiVersion: helm.cattle.io/v1
 kind: HelmChartConfig
 metadata:
@@ -16,3 +20,6 @@ spec:
               to: websecure
               scheme: https
               permanent: true
+    ingressRoute:
+      dashboard:
+        enabled: true

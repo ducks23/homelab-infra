@@ -10,12 +10,3 @@ patches:
       - op: replace
         path: /spec/dnsNames
         value: ["*.dev.naboo.party"]
-# Cloudflare API token (Zone > DNS > Edit on naboo.party only), read from the
-# gitignored .env.cloudflare next to this file. Copy .env.cloudflare.example.
-secretGenerator:
-  - name: cloudflare-api-token
-    namespace: cert-manager
-    envs:
-      - .env.cloudflare
-    options:
-      disableNameSuffixHash: true

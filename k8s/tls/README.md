@@ -42,9 +42,13 @@ each with **Zone / DNS / Edit** and Zone Resources set to **Specific zone:
 naboo.party**. Name them `proxmox`, `k3s-prod` and `k3s-dev`, so revoking one
 never breaks the others (or UniFi's).
 
+The cluster token lives in 1Password (item `cloudflare-cert-manager`, field `api-token`
+in the homelab vault; see ../../README.md). Once cert-manager is installed (step 3), put it
+in each cluster:
+
 ```bash
-cp overlays/prod/.env.cloudflare.example overlays/prod/.env.cloudflare   # api-token=<k3s-prod token>
-cp overlays/dev/.env.cloudflare.example  overlays/dev/.env.cloudflare    # api-token=<k3s-dev token>
+./cloudflare-secret.sh dev
+./cloudflare-secret.sh prod
 ```
 
 ### 3. Install cert-manager (each cluster)
