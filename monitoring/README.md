@@ -19,7 +19,7 @@ Nothing has a login except Grafana, so keep these ports on the LAN.
 
 Where the data comes from:
 
-- **Proxmox host and VMs:** `node_exporter` on pve, alpine-postgres, minecraft and devbox,
+- **Proxmox host and VMs:** `node_exporter` on pve, alpine-postgres and devbox,
   installed by `node-exporter.yml` and scraped on :9100. On pve it also reports pending apt
   updates. The monitoring VM runs its own in Docker.
 - **k3s clusters:** Grafana's k8s-monitoring chart (`../k8s/monitoring`) runs Alloy,
@@ -35,7 +35,7 @@ it clears.
 
 - **Proxmox:** node down, a VM with *Start at boot* stopped, storage over 85% or unavailable
   (including the TrueNAS NFS share).
-- **Hosts:** pve, TrueNAS, every k3s node, alpine-postgres, minecraft and devbox stop answering
+- **Hosts:** pve, TrueNAS, every k3s node, alpine-postgres and devbox stop answering
   ping. While a host is unreachable, alerts about its services are muted.
 - **Machines** (Proxmox host, VMs, k3s nodes): a disk over 85% full or on course to fill
   within a day, under 10% memory free, CPU over 90% for 30 minutes, an OOM kill, a failed
@@ -44,7 +44,7 @@ it clears.
   can't pull its image, a pod isn't running for 15 minutes, a deployment is short of replicas,
   a job failed, a volume is over 85% full. The alert email names the cluster and pod, and
   includes the `kubectl logs` command to look at it.
-- **Services:** Proxmox UI, TrueNAS NFS, both k3s API VIPs, PostgreSQL, Minecraft stop accepting
+- **Services:** Proxmox UI, TrueNAS NFS, both k3s API VIPs, PostgreSQL stop accepting
   connections.
 - **Websites:** EasyCabinets and Workbench aren't returning 2xx over HTTPS, or their certificate
   expires within 14 days.

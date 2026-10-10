@@ -1,2 +1,0 @@
-# The root .gitignore ignores .env.*; the examples are safe to commit.
-!.env.cloudflare.example
