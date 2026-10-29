@@ -14,4 +14,4 @@ patches:
         value: workbench.dev.naboo.party
 images:
   - name: ghcr.io/ducks23/workbench
-    newTag: "20261014203814" # {"$imagepolicy": "flux-system:workbench-dev:tag"}
+    newTag: "20261029185754" # {"$imagepolicy": "flux-system:workbench-dev:tag"}
