@@ -14,4 +14,4 @@ patches:
         value: easycabinets.dev.naboo.party
 images:
   - name: ghcr.io/ducks23/easycabinets
-    newTag: "20261029211611" # {"$imagepolicy": "flux-system:easycabinets-dev:tag"}
+    newTag: "20261029212318" # {"$imagepolicy": "flux-system:easycabinets-dev:tag"}
