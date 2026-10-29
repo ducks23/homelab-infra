@@ -82,7 +82,6 @@ the values never land on disk:
 | `proxmox/` | `./tf plan`, `./tf apply`: runs Terraform under `op run` with `op.env` |
 | `k3s-cluster/`, `postgresql/`, `monitoring/` | `group_vars/*/secrets.yml` use the `community.general.onepassword` lookup |
 | `infrastructure/`, `apps/` | External Secrets reads items through a 1Password service account (`infrastructure/configs/onepassword-store.yaml`); each `ExternalSecret` names an item and field |
-| `../patchwork-planner` | `make deploy` fills in `.env.k8s.tpl` with `op inject` and pipes it into the Kubernetes secret |
 | `scripts/flux-bootstrap.sh` | `op read` for the service account token and the GitHub token |
 | GHCR token | the Makefiles fall back to `op read op://homelab/ghcr/token` |
 

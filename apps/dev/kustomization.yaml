@@ -6,3 +6,4 @@ resources:
   - image-policies.yaml
   - easycabinets
   - workbench
+  - patchwork

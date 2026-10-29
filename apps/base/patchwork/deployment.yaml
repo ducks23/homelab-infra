@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: patchwork
+spec:
+  # Stateless: quilts and sessions live in PostgreSQL. Two pods so a node restart doesn't take it down.
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0  # a new pod is ready before an old one goes
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: patchwork
+  template:
+    metadata:
+      labels:
+        app: patchwork
+    spec:
+      imagePullSecrets:
+        # From 1Password, see ghcr-pull.yaml.
+        - name: ghcr-pull
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: patchwork
+      # preStop sleep + grace: Traefik drops a terminating pod from its endpoints a moment
+      # after Kubernetes marks it, so keep serving for a few seconds instead of 502ing.
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: patchwork
+          # The tag is set in apps/dev/patchwork, and Flux bumps it there.
+          image: ghcr.io/ducks23/patchwork-planner
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          envFrom:
+            # DATABASE_URL, SECRET_KEY, APP_PASSWORD...: from 1Password, see
+            # apps/dev/patchwork/env-secret.yaml.
+            - secretRef:
+                name: patchwork-env
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "8"]
+          startupProbe:
+            # Start-up runs migrations first; give it up to a minute.
+            tcpSocket:
+              port: 8000
+            periodSeconds: 3
+            failureThreshold: 20
+          readinessProbe:
+            httpGet:
+              path: /api/health/
+              port: 8000
+            periodSeconds: 10
+          livenessProbe:
+            # TCP only: /api/health/ checks the database, and a database outage shouldn't restart the pods.
+            tcpSocket:
+              port: 8000
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 384Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory  # gunicorn's worker heartbeat files
+            sizeLimit: 16Mi

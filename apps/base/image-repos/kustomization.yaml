@@ -8,3 +8,4 @@ resources:
   - ghcr-auth.yaml
   - easycabinets.yaml
   - workbench.yaml
+  - patchwork.yaml

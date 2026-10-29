@@ -1,0 +1,19 @@
+# Traefik routes on the Host header; each overlay sets the real host. TLS comes
+# from Traefik's default TLSStore (the cluster's wildcard certificate).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: patchwork
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: patchwork.example.invalid
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: patchwork
+                port:
+                  number: 80
