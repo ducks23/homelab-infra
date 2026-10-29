@@ -42,8 +42,22 @@ Nobody edits image tags. CI builds the images and Flux picks the tag. For an app
 
 The `ImageUpdateAutomation` in `clusters/<env>` rewrites that line when the policy
 picks a new tag and commits it as `fluxcdbot`, and Flux rolls it out. So every deploy
-is a commit, and reverting one is a `git revert`. Pull before you push, since Flux
-commits to `main` too.
+is a commit. Pull before you push, since Flux commits to `main` too.
+
+To roll back, push a fix (its build gets a newer tag). A plain `git revert` of a
+`fluxcdbot` commit doesn't stick, because the policy still picks the newest tag and
+the automation puts it back within minutes. Suspend the automation first:
+
+```bash
+flux --context dev suspend image update apps
+git revert <the fluxcdbot commit> && git push
+# once a fixed image is pushed:
+flux --context dev resume image update apps
+```
+
+Flux reaches the repo through a deploy key per cluster, with write access (Settings >
+Deploy keys). Add those keys in the GitHub web UI: keys that `flux bootstrap` adds
+with a personal token are deleted by GitHub when that token is revoked or expires.
 
 ### Bootstrapping a cluster
 
