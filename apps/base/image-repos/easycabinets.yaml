@@ -1,0 +1,9 @@
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageRepository
+metadata:
+  name: easycabinets
+spec:
+  image: ghcr.io/ducks23/easycabinets
+  interval: 5m
+  secretRef:
+    name: ghcr-auth

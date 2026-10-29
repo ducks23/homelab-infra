@@ -82,7 +82,7 @@ the values never land on disk:
 | `proxmox/` | `./tf plan`, `./tf apply`: runs Terraform under `op run` with `op.env` |
 | `k3s-cluster/`, `postgresql/`, `monitoring/` | `group_vars/*/secrets.yml` use the `community.general.onepassword` lookup |
 | `infrastructure/`, `apps/` | External Secrets reads items through a 1Password service account (`infrastructure/configs/onepassword-store.yaml`); each `ExternalSecret` names an item and field |
-| `../easycabinets`, `../workbench` | `make deploy` fills in `.env.tpl` (`.env.prod.tpl` for prod) with `op inject` and pipes it into the Kubernetes secret |
+| `../workbench` | `make deploy` fills in `.env.tpl` (`.env.prod.tpl` for prod) with `op inject` and pipes it into the Kubernetes secret |
 | `scripts/flux-bootstrap.sh` | `op read` for the service account token and the GitHub token |
 | GHCR token | the Makefiles fall back to `op read op://homelab/ghcr/token` |
 
@@ -101,6 +101,7 @@ homelab vault. Item titles and field labels must match exactly.
 | `external-secrets` | `token` | 1Password service account token, read-only access to the homelab vault (1Password.com > Developer > Service Accounts) |
 | `flux-github` | `token` | GitHub personal access token for `flux bootstrap`: classic with `repo`, or fine-grained with Administration and Contents read/write on homelab-infra |
 | `easycabinets-google` | `client-id`, `client-secret` | Google OAuth client for EasyCabinets |
+| `easycabinets` | `admin-emails` | Comma-separated emails of EasyCabinets admins (kept out of the public repo) |
 | `postgres-workbench` | `password` | `workbench` role (Workbench planner) |
 | `workbench` | `password`, `session-secret` | Workbench sign-in password, and a random cookie-signing key (`openssl rand -hex 32`) |
 | `patchwork` | `password`, `secret-key` | Patchwork Planner sign-in password, and Django's `SECRET_KEY` (`openssl rand -hex 32`) |

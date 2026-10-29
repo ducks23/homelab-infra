@@ -1,0 +1,19 @@
+# Traefik routes on the Host header; each overlay sets the real host. TLS comes
+# from Traefik's default TLSStore (the cluster's wildcard certificate).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: easycabinets
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: easycabinets.example.invalid
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: easycabinets
+                port:
+                  number: 80

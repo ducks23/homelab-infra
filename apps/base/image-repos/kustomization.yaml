@@ -6,3 +6,4 @@ kind: Kustomization
 namespace: flux-system
 resources:
   - ghcr-auth.yaml
+  - easycabinets.yaml

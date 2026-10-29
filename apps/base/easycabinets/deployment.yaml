@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: easycabinets
+spec:
+  # Stateless: data lives in PostgreSQL and sessions in the database.
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0  # a new pod is ready before an old one goes
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: easycabinets
+  template:
+    metadata:
+      labels:
+        app: easycabinets
+    spec:
+      imagePullSecrets:
+        # From 1Password, see ghcr-pull.yaml.
+        - name: ghcr-pull
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: easycabinets
+      # preStop sleep + grace: Traefik drops a terminating pod from its endpoints a moment
+      # after Kubernetes marks it, so keep serving for a few seconds instead of 502ing.
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: easycabinets
+          # The tag is set in apps/dev/easycabinets, and Flux bumps it there.
+          image: ghcr.io/ducks23/easycabinets
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          envFrom:
+            # DATABASE_URL, PUBLIC_URL, ALLOW_SIGNUP, GOOGLE_CLIENT_*, ADMIN_EMAILS: from
+            # 1Password, see apps/dev/easycabinets/env-secret.yaml.
+            - secretRef:
+                name: easycabinets-env
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "8"]
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: tmp
+          emptyDir: {}
