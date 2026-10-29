@@ -14,4 +14,4 @@ patches:
         value: patchwork.dev.naboo.party
 images:
   - name: ghcr.io/ducks23/patchwork-planner
-    newTag: "20261029191103" # {"$imagepolicy": "flux-system:patchwork-dev:tag"}
+    newTag: "20261029212321" # {"$imagepolicy": "flux-system:patchwork-dev:tag"}
