@@ -7,3 +7,4 @@ namespace: flux-system
 resources:
   - ghcr-auth.yaml
   - easycabinets.yaml
+  - workbench.yaml

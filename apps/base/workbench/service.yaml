@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: workbench
+spec:
+  selector:
+    app: workbench
+  ports:
+    - port: 80
+      targetPort: 3000

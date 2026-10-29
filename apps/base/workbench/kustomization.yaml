@@ -1,0 +1,11 @@
+# Workbench (github.com/ducks23/workbench). Its CI pushes images; the tag
+# and per-cluster settings are in ../../<env>/workbench.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: workbench
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+  - ghcr-pull.yaml

@@ -1,0 +1,19 @@
+# Image pull secret for the private ghcr.io package, from the GHCR token in 1Password.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: ghcr-pull
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: onepassword
+  target:
+    template:
+      type: kubernetes.io/dockerconfigjson
+      data:
+        .dockerconfigjson: '{"auths":{"ghcr.io":{"username":"ducks23","password":"{{ .token }}","auth":"{{ printf "ducks23:%s" .token | b64enc }}"}}}'
+  data:
+    - secretKey: token
+      remoteRef:
+        key: ghcr/token
