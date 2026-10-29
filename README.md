@@ -11,9 +11,7 @@ Infrastructure and apps for a Proxmox-based homelab.
 | `clusters/`    | Flux: the entry point for each cluster (`dev`, `prod`), see below       |
 | `infrastructure/` | Flux: cert-manager + Let's Encrypt (`configs/tls`), External Secrets, Alloy for monitoring |
 | `apps/`        | Flux: the apps' manifests, `base/` plus a `dev/` and `prod/` overlay each (empty for now) |
-| `k8s/`         | Loose Kubernetes manifests, not managed by Flux                         |
 | `scripts/`     | `flux-bootstrap.sh`: installs Flux in a cluster                         |
-| `writeups/`    | Notes on how things were built                                          |
 
 Each directory has its own README with the details.
 
