@@ -10,7 +10,7 @@ Infrastructure and apps for a Proxmox-based homelab.
 | `monitoring/`  | Ansible: Prometheus, Grafana, Loki and email alerts on the `monitoring` VM, node_exporter on the others |
 | `clusters/`    | Flux: the entry point for each cluster (`dev`, `prod`), see below       |
 | `infrastructure/` | Flux: cert-manager + Let's Encrypt (`configs/tls`), External Secrets, Alloy for monitoring |
-| `apps/`        | Flux: the apps' manifests, `base/` plus a `dev/` and `prod/` overlay each (empty for now) |
+| `apps/`        | Flux: EasyCabinets, Workbench and Patchwork Planner (dev only), `base/` plus a `dev/` overlay each |
 | `scripts/`     | `flux-bootstrap.sh`: installs Flux in a cluster                         |
 
 Each directory has its own README with the details.
