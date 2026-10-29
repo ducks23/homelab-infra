@@ -1,6 +1,6 @@
 ---
 # node_exporter on the Proxmox host and the standalone VMs (CPU, memory, disk metrics).
-# The k3s nodes get theirs from k8s-monitoring instead (../k8s/monitoring); the monitoring
+# The k3s nodes get theirs from k8s-monitoring instead (../infrastructure/controllers/k8s-monitoring.yaml); the monitoring
 # VM runs its own in Docker (site.yml).
 - name: Install node_exporter
   hosts: node_exporter

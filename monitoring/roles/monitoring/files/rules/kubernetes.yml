@@ -1,5 +1,5 @@
 # Managed by Ansible (monitoring/roles/monitoring). The k3s clusters, from the metrics Alloy
-# pushes in (../k8s/monitoring). Every series carries cluster="prod"/"dev" (and env=).
+# pushes in (../infrastructure/controllers/k8s-monitoring.yaml). Every series carries cluster="prod"/"dev" (and env=).
 groups:
   - name: kubernetes
     rules:

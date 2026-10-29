@@ -2,7 +2,5 @@
 # cp vault.yml.example vault.yml, fill in real values, then (recommended):
 #   ansible-vault encrypt vault.yml
 # Generate a password with: openssl rand -base64 24
-vault_postgresql_app_password: "change-me"
-vault_postgresql_app_prod_password: "change-me"
 vault_postgresql_easycabinets_password: "change-me"
 vault_postgresql_workbench_password: "change-me"

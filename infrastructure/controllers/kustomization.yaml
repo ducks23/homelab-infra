@@ -1,0 +1,8 @@
+# Controllers both clusters run. Flux waits for every HelmRelease here to be ready
+# before it applies ../configs, which needs their CRDs.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - cert-manager.yaml
+  - external-secrets.yaml
+  - k8s-monitoring.yaml

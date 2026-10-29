@@ -1,0 +1,10 @@
+# Trusted HTTPS for everything behind Traefik. Shared by both clusters; Flux fills
+# in ${cluster} (see README.md).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - clusterissuers.yaml
+  - certificate.yaml
+  - tlsstore.yaml
+  - traefik-config.yaml
+  - cloudflare-api-token.yaml

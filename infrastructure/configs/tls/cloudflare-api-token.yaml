@@ -1,0 +1,15 @@
+# cert-manager's Cloudflare token for DNS-01 challenges, read by the ClusterIssuers.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: cloudflare-api-token
+  namespace: cert-manager
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: onepassword
+  data:
+    - secretKey: api-token
+      remoteRef:
+        key: cloudflare-cert-manager/api-token

@@ -22,7 +22,7 @@ Where the data comes from:
 - **Proxmox host and VMs:** `node_exporter` on pve, alpine-postgres and devbox,
   installed by `node-exporter.yml` and scraped on :9100. On pve it also reports pending apt
   updates. The monitoring VM runs its own in Docker.
-- **k3s clusters:** Grafana's k8s-monitoring chart (`../k8s/monitoring`) runs Alloy,
+- **k3s clusters:** Grafana's k8s-monitoring chart (`../infrastructure/controllers/k8s-monitoring.yaml`) runs Alloy,
   kube-state-metrics and node-exporter in each cluster and pushes metrics, pod logs and
   Kubernetes events here, labelled `cluster="prod"`/`"dev"`.
 - **Everything else:** pve-exporter (Proxmox API) and blackbox probes, run from this VM.
@@ -86,9 +86,9 @@ ansible-galaxy collection install -r requirements.yml
 cd ../proxmox && ./tf apply              # creates the VM
 cd ../monitoring && ansible-playbook site.yml
 ansible-playbook node-exporter.yml       # node_exporter on the Proxmox host and VMs
-../k8s/monitoring/deploy.sh dev          # Alloy on each k3s cluster
-../k8s/monitoring/deploy.sh prod
 ```
+
+Flux installs Alloy on the k3s clusters (`../infrastructure/controllers`).
 
 `site.yml` waits for cloud-init, installs Docker, writes the config under `/srv/monitoring`, puts
 the secrets in `/srv/monitoring/secrets` (root only), downloads the dashboards and starts the

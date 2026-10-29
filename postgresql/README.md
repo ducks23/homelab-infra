@@ -18,8 +18,8 @@ static IP and installs your SSH key for the `alpine` user (passwordless `doas`).
 ```bash
 ansible-galaxy collection install -r requirements.yml
 
-# Passwords come from 1Password (group_vars/postgres/secrets.yml): items postgres-app,
-# postgres-app-prod and postgres-easycabinets in the homelab vault. See ../README.md.
+# Passwords come from 1Password (group_vars/postgres/secrets.yml): items postgres-easycabinets
+# and postgres-workbench in the homelab vault. See ../README.md.
 
 ansible-playbook site.yml
 ```
@@ -46,12 +46,12 @@ Re-running is safe; every step is idempotent.
 ## Connect
 
 ```bash
-psql -h 192.168.1.30 -U app app             # dev
-psql -h 192.168.1.30 -U app_prod app_prod   # prod
+psql -h 192.168.1.30 -U easycabinets easycabinets
+psql -h 192.168.1.30 -U workbench workbench
 ```
 
-Dev and prod use separate roles and databases. `pg_hba.conf` only lets each role
-connect to its own database, so the dev credentials can't reach prod data.
+Each app has its own role and database. `pg_hba.conf` only lets each role
+connect to its own database.
 
 ## Notes
 
