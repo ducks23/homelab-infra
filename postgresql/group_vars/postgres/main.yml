@@ -12,16 +12,21 @@ alpine_dns_servers:
 postgresql_hba_entries:
   - { type: host, database: easycabinets, user: easycabinets, address: 192.168.1.0/24 }
   - { type: host, database: workbench, user: workbench, address: 192.168.1.0/24 }
+  - { type: host, database: patchwork, user: patchwork, address: 192.168.1.0/24 }
 
-# Roles and databases to create (easycabinets = the EasyCabinets app, workbench = the Workbench planner). Passwords come from 1Password, see secrets.yml.
+# Roles and databases to create (easycabinets = the EasyCabinets app, workbench = the Workbench planner, patchwork = Patchwork Planner). Passwords come from 1Password, see secrets.yml.
 postgresql_users:
   - name: easycabinets
     password: "{{ vault_postgresql_easycabinets_password }}"
   - name: workbench
     password: "{{ vault_postgresql_workbench_password }}"
+  - name: patchwork
+    password: "{{ vault_postgresql_patchwork_password }}"
 
 postgresql_databases:
   - name: easycabinets  # EasyCabinets (~/Documents/easycabinets), used by the dev k3s cluster
     owner: easycabinets
   - name: workbench  # Workbench planner (~/Documents/workbench), used by the dev k3s cluster
     owner: workbench
+  - name: patchwork  # Patchwork Planner (~/Documents/patchwork-planner), used by the dev k3s cluster
+    owner: patchwork

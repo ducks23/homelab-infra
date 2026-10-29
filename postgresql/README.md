@@ -18,8 +18,8 @@ static IP and installs your SSH key for the `alpine` user (passwordless `doas`).
 ```bash
 ansible-galaxy collection install -r requirements.yml
 
-# Passwords come from 1Password (group_vars/postgres/secrets.yml): items postgres-easycabinets
-# and postgres-workbench in the homelab vault. See ../README.md.
+# Passwords come from 1Password (group_vars/postgres/secrets.yml): items postgres-easycabinets,
+# postgres-workbench and postgres-patchwork in the homelab vault. See ../README.md.
 
 ansible-playbook site.yml
 ```

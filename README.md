@@ -103,6 +103,7 @@ homelab vault. Item titles and field labels must match exactly.
 | `easycabinets` | `admin-emails` | Comma-separated emails of EasyCabinets admins (kept out of the public repo) |
 | `postgres-workbench` | `password` | `workbench` role (Workbench planner) |
 | `workbench` | `password`, `session-secret` | Workbench sign-in password, and a random cookie-signing key (`openssl rand -hex 32`) |
+| `postgres-patchwork` | `password` | `patchwork` role (Patchwork Planner) |
 | `patchwork` | `password`, `secret-key` | Patchwork Planner sign-in password, and Django's `SECRET_KEY` (`openssl rand -hex 32`) |
 | `alertmanager-smtp` | `password` | Gmail app password that alert emails are sent with |
 | `grafana` | `admin-password` | Grafana `admin` password |
