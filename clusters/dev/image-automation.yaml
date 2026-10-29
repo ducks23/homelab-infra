@@ -1,0 +1,27 @@
+# Rewrites the image tags in ./apps/dev to whatever the ImagePolicies there pick,
+# and commits that to the branch Flux syncs from (it follows the flux-system
+# GitRepository, so it pushes wherever bootstrap pointed it).
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageUpdateAutomation
+metadata:
+  name: apps
+  namespace: flux-system
+spec:
+  interval: 5m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  git:
+    commit:
+      author:
+        name: fluxcdbot
+        email: fluxcdbot@users.noreply.github.com
+      messageTemplate: |
+        dev: update images
+
+        {{ range .Changed.Changes -}}
+        - {{ .OldValue }} -> {{ .NewValue }}
+        {{ end -}}
+  update:
+    path: ./apps/dev
+    strategy: Setters

@@ -8,29 +8,19 @@ alpine_dns_servers:
   - 192.168.1.1
 
 # Accept connections from the LAN (password auth, scram-sha-256). Each role may
-# only reach its own database, so dev credentials can't touch prod data.
+# only reach its own database.
 postgresql_hba_entries:
-  - { type: host, database: app, user: app, address: 192.168.1.0/24 }
-  - { type: host, database: app_prod, user: app_prod, address: 192.168.1.0/24 }
   - { type: host, database: easycabinets, user: easycabinets, address: 192.168.1.0/24 }
   - { type: host, database: workbench, user: workbench, address: 192.168.1.0/24 }
 
-# Roles and databases to create (app = dev, app_prod = prod, easycabinets = the EasyCabinets app, workbench = the Workbench planner). Passwords come from group_vars/postgres/vault.yml.
+# Roles and databases to create (easycabinets = the EasyCabinets app, workbench = the Workbench planner). Passwords come from 1Password, see secrets.yml.
 postgresql_users:
-  - name: app
-    password: "{{ vault_postgresql_app_password }}"
-  - name: app_prod
-    password: "{{ vault_postgresql_app_prod_password }}"
   - name: easycabinets
     password: "{{ vault_postgresql_easycabinets_password }}"
   - name: workbench
     password: "{{ vault_postgresql_workbench_password }}"
 
 postgresql_databases:
-  - name: app
-    owner: app
-  - name: app_prod
-    owner: app_prod
   - name: easycabinets  # EasyCabinets (~/Documents/easycabinets), used by the dev k3s cluster
     owner: easycabinets
   - name: workbench  # Workbench planner (~/Documents/workbench), used by the dev k3s cluster

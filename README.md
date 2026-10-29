@@ -8,12 +8,68 @@ Infrastructure and apps for a Proxmox-based homelab.
 | `k3s-cluster/` | Ansible: installs k3s (prod and dev clusters) with a kube-vip API VIP   |
 | `postgresql/`  | Ansible: PostgreSQL on the `alpine-postgres` VM, nightly dumps to TrueNAS |
 | `monitoring/`  | Ansible: Prometheus, Grafana, Loki and email alerts on the `monitoring` VM, node_exporter on the others |
-| `go-api/`      | Go REST API, container image on GHCR, deployed to k3s with Kustomize    |
-| `k8s/`         | Loose Kubernetes manifests, and Alloy for monitoring (`k8s/monitoring`) |
-| `k8s/tls/`     | Let's Encrypt HTTPS: cert-manager + Traefik, Proxmox, DNS on Cloudflare |
-| `writeups/`    | Notes on how things were built                                          |
+| `clusters/`    | Flux: the entry point for each cluster (`dev`, `prod`), see below       |
+| `infrastructure/` | Flux: cert-manager + Let's Encrypt (`configs/tls`), External Secrets, Alloy for monitoring |
+| `apps/`        | Flux: the apps' manifests, `base/` plus a `dev/` and `prod/` overlay each (empty for now) |
+| `scripts/`     | `flux-bootstrap.sh`: installs Flux in a cluster                         |
 
 Each directory has its own README with the details.
+
+## GitOps with Flux
+
+Terraform and Ansible build the VMs and the k3s clusters. Everything inside the
+clusters comes from this repo through [Flux](https://fluxcd.io): each cluster's Flux
+syncs `clusters/<env>`, which applies, in order,
+
+1. `infrastructure/controllers`: cert-manager, External Secrets, k8s-monitoring (Helm charts)
+2. `infrastructure/configs`: the 1Password secret store, Let's Encrypt issuers, wildcard cert, Traefik config
+3. `apps/<env>`: the apps
+
+Each step waits for the one before it to be healthy. `${cluster}` in `infrastructure/`
+becomes `dev` or `prod`. Nothing is applied by hand; a change is a commit.
+
+### Image updates
+
+Nobody edits image tags. CI builds the images and Flux picks the tag. For an app:
+
+- `apps/base/image-repos/<app>.yaml`: an `ImageRepository`, so Flux scans the app's
+  ghcr.io package for new tags.
+- `apps/<env>/image-policies.yaml`: an `ImagePolicy` per cluster saying which tag to
+  run. Dev takes the newest build (tags like `20261029153000`, newest number wins);
+  prod takes the newest release (only `1.2.3`-style tags).
+- `apps/<env>/<app>/kustomization.yaml`: the tag, on a line ending in
+  `# {"$imagepolicy": "flux-system:<app>-<env>:tag"}`.
+
+The `ImageUpdateAutomation` in `clusters/<env>` rewrites that line when the policy
+picks a new tag and commits it as `fluxcdbot`, and Flux rolls it out. So every deploy
+is a commit, and reverting one is a `git revert`. Pull before you push, since Flux
+commits to `main` too.
+
+### Bootstrapping a cluster
+
+Needs the `flux` CLI (`brew install fluxcd/tap/flux`) and the 1Password items
+`external-secrets` and `flux-github` (below). Then, once per cluster:
+
+```bash
+flux check --pre --context dev
+scripts/flux-bootstrap.sh dev            # or: scripts/flux-bootstrap.sh dev flux, to try a branch
+flux --context dev get kustomizations --watch
+```
+
+The script stores the 1Password service account token in the cluster (the one secret
+that can't come from git) and runs `flux bootstrap github`, which installs Flux,
+commits its own manifests to `clusters/<env>/flux-system/`, and adds a deploy key
+to the repo with write access, for the image updates.
+
+**First time only, moving off the hand-applied setup.** Flux can't take over
+what was installed outside Helm or by k3s' Helm controller, so before bootstrapping
+a cluster remove those (the wildcard cert secret stays, so HTTPS keeps working;
+metrics and logs pause until Flux reinstalls k8s-monitoring):
+
+```bash
+kubectl --context dev -n kube-system delete helmchart k8s-monitoring
+kubectl --context dev delete -f https://github.com/cert-manager/cert-manager/releases/download/v1.21.2/cert-manager.yaml
+```
 
 ## Secrets
 
@@ -25,9 +81,10 @@ the values never land on disk:
 | ----- | ---------------------- |
 | `proxmox/` | `./tf plan`, `./tf apply`: runs Terraform under `op run` with `op.env` |
 | `k3s-cluster/`, `postgresql/`, `monitoring/` | `group_vars/*/secrets.yml` use the `community.general.onepassword` lookup |
-| `go-api/`, `../easycabinets`, `../workbench` | `make deploy` fills in `.env.tpl` (`.env.prod.tpl` for prod) with `op inject` and pipes it into the Kubernetes secret |
-| `k8s/tls/` | `k8s/tls/cloudflare-secret.sh dev\|prod` puts cert-manager's Cloudflare token in the cluster |
-| GHCR token | both Makefiles fall back to `op read op://homelab/ghcr/token` |
+| `infrastructure/`, `apps/` | External Secrets reads items through a 1Password service account (`infrastructure/configs/onepassword-store.yaml`); each `ExternalSecret` names an item and field |
+| `../easycabinets`, `../workbench` | `make deploy` fills in `.env.tpl` (`.env.prod.tpl` for prod) with `op inject` and pipes it into the Kubernetes secret |
+| `scripts/flux-bootstrap.sh` | `op read` for the service account token and the GitHub token |
+| GHCR token | the Makefiles fall back to `op read op://homelab/ghcr/token` |
 
 **One-time setup:** in the 1Password app, turn on Settings > Developer > *Integrate with
 1Password CLI* (the CLI then signs in with Touch ID), then create these items in the
@@ -38,11 +95,11 @@ homelab vault. Item titles and field labels must match exactly.
 | `proxmox-terraform` | `api-token` | Proxmox API token, `user@realm!tokenid=secret` (Datacenter > Permissions > API Tokens) |
 | `k3s-dev` | `token` | dev cluster join token; must match the running cluster |
 | `k3s-prod` | `token` | prod cluster join token; must match the running cluster |
-| `postgres-app` | `password` | `app` role (dev databases) |
-| `postgres-app-prod` | `password` | `app_prod` role |
 | `postgres-easycabinets` | `password` | `easycabinets` role |
 | `ghcr` | `token` | GitHub classic PAT with `write:packages` |
 | `cloudflare-cert-manager` | `api-token` | Cloudflare API token with Zone:DNS:Edit, for DNS-01 challenges |
+| `external-secrets` | `token` | 1Password service account token, read-only access to the homelab vault (1Password.com > Developer > Service Accounts) |
+| `flux-github` | `token` | GitHub personal access token for `flux bootstrap`: classic with `repo`, or fine-grained with Administration and Contents read/write on homelab-infra |
 | `easycabinets-google` | `client-id`, `client-secret` | Google OAuth client for EasyCabinets |
 | `postgres-workbench` | `password` | `workbench` role (Workbench planner) |
 | `workbench` | `password`, `session-secret` | Workbench sign-in password, and a random cookie-signing key (`openssl rand -hex 32`) |

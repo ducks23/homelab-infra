@@ -8,7 +8,7 @@ monitoring_alert_email: jesse1517@gmail.com
 monitoring_pve_host: 192.168.1.146
 
 # node_exporter on the Proxmox host and VMs (installed by node-exporter.yml). The k3s nodes
-# send theirs through Alloy (../k8s/monitoring) instead.
+# send theirs through Alloy (../infrastructure/controllers/k8s-monitoring.yaml) instead.
 monitoring_node_targets:
   - { host: pve, address: "192.168.1.146:9100", env: prod }
   - { host: alpine-postgres, address: "192.168.1.30:9100", env: prod }

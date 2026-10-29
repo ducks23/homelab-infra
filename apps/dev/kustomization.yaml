@@ -1,0 +1,5 @@
+# Add each app's overlay (<app>/) here, and its ImagePolicy in image-policies.yaml.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../base/image-repos

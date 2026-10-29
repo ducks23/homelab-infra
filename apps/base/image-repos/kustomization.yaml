@@ -1,0 +1,8 @@
+# The registries Flux scans for new image tags, one ImageRepository per app. They
+# live in flux-system, next to the ImageUpdateAutomation; each cluster picks tags
+# from them with its own ImagePolicies (../../<env>/image-policies.yaml).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: flux-system
+resources:
+  - ghcr-auth.yaml
