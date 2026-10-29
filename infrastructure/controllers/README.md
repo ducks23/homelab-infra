@@ -15,14 +15,14 @@ To upgrade one, change its chart `version:` and push.
 Grafana's [k8s-monitoring](https://github.com/grafana/k8s-monitoring-helm) chart, one copy per
 k3s cluster. It runs [Alloy](https://grafana.com/docs/alloy/latest/) collectors plus
 kube-state-metrics and node-exporter in the `monitoring` namespace, and pushes to the monitoring
-VM (`../../monitoring`, 192.168.1.60):
+VM (`../../ansible/monitoring`, 192.168.1.60):
 
 - **Metrics** to Prometheus (remote-write): node CPU/memory/disk, pod and container usage,
   Kubernetes object state (deployments, pods, jobs, volumes).
 - **Pod logs** and **Kubernetes events** to Loki.
 
 Every series and log stream carries `cluster` and `env` labels (`dev` or `prod`). The alert rules
-and dashboards that use them are in `../../monitoring`. Flux fills in the cluster name
+and dashboards that use them are in `../../ansible/monitoring`. Flux fills in the cluster name
 (`${cluster}`) from `../../clusters/<env>/infrastructure.yaml`.
 
 ### Checking it

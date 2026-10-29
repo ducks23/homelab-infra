@@ -1,6 +1,6 @@
 # Grafana's k8s-monitoring chart: Alloy collectors plus kube-state-metrics and node-exporter.
 # Sends cluster metrics, host metrics, pod logs and Kubernetes events to the monitoring VM
-# (../../monitoring). ${cluster} is set to dev or prod by ../../clusters/<env>/infrastructure.yaml.
+# (../../ansible/monitoring). ${cluster} is set to dev or prod by ../../clusters/<env>/infrastructure.yaml.
 apiVersion: v1
 kind: Namespace
 metadata:

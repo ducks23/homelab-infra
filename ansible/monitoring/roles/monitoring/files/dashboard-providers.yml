@@ -1,0 +1,13 @@
+# Managed by Ansible (ansible/monitoring/roles/monitoring).
+# Each subdirectory of /etc/grafana/dashboards becomes a Grafana folder.
+apiVersion: 1
+
+providers:
+  - name: files
+    type: file
+    # Edits made in the UI are lost on the next re-run; use "Save as" to keep a copy.
+    allowUiUpdates: true
+    updateIntervalSeconds: 60
+    options:
+      path: /etc/grafana/dashboards
+      foldersFromFilesStructure: true

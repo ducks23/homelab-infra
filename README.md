@@ -4,10 +4,10 @@ Infrastructure and apps for a Proxmox-based homelab.
 
 | Directory      | What it is                                                              |
 | -------------- | ----------------------------------------------------------------------- |
-| `proxmox/`     | Terraform: VMs for the k3s clusters, PostgreSQL and monitoring          |
-| `k3s-cluster/` | Ansible: installs k3s (prod and dev clusters) with a kube-vip API VIP   |
-| `postgresql/`  | Ansible: PostgreSQL on the `alpine-postgres` VM, nightly dumps to TrueNAS |
-| `monitoring/`  | Ansible: Prometheus, Grafana, Loki and email alerts on the `monitoring` VM, node_exporter on the others |
+| `terraform/`   | Terraform: VMs on Proxmox for the k3s clusters, PostgreSQL and monitoring |
+| `ansible/k3s-cluster/` | Ansible: installs k3s (prod and dev clusters) with a kube-vip API VIP |
+| `ansible/postgresql/`  | Ansible: PostgreSQL on the `alpine-postgres` VM, nightly dumps to TrueNAS |
+| `ansible/monitoring/`  | Ansible: Prometheus, Grafana, Loki and email alerts on the `monitoring` VM, node_exporter on the others |
 | `clusters/`    | Flux: the entry point for each cluster (`dev`, `prod`), see below       |
 | `infrastructure/` | Flux: cert-manager + Let's Encrypt (`configs/tls`), External Secrets, Alloy for monitoring |
 | `apps/`        | Flux: EasyCabinets, Workbench and Patchwork Planner (dev only), `base/` plus a `dev/` overlay each |
@@ -79,8 +79,8 @@ the values never land on disk:
 
 | Where | How it reads 1Password |
 | ----- | ---------------------- |
-| `proxmox/` | `./tf plan`, `./tf apply`: runs Terraform under `op run` with `op.env` |
-| `k3s-cluster/`, `postgresql/`, `monitoring/` | `group_vars/*/secrets.yml` use the `community.general.onepassword` lookup |
+| `terraform/` | `./tf plan`, `./tf apply`: runs Terraform under `op run` with `op.env` |
+| `ansible/*/` | `group_vars/*/secrets.yml` use the `community.general.onepassword` lookup |
 | `infrastructure/`, `apps/` | External Secrets reads items through a 1Password service account (`infrastructure/configs/onepassword-store.yaml`); each `ExternalSecret` names an item and field |
 | `scripts/flux-bootstrap.sh` | `op read` for the service account token and the GitHub token |
 | GHCR token | the Makefiles fall back to `op read op://homelab/ghcr/token` |
@@ -107,7 +107,7 @@ homelab vault. Item titles and field labels must match exactly.
 | `patchwork` | `password`, `secret-key` | Patchwork Planner sign-in password, and Django's `SECRET_KEY` (`openssl rand -hex 32`) |
 | `alertmanager-smtp` | `password` | Gmail app password that alert emails are sent with |
 | `grafana` | `admin-password` | Grafana `admin` password |
-| `proxmox-monitoring` | `token-secret` | Secret of the read-only `monitoring@pve!exporter` Proxmox API token (see monitoring/README.md) |
+| `proxmox-monitoring` | `token-secret` | Secret of the read-only `monitoring@pve!exporter` Proxmox API token (see ansible/monitoring/README.md) |
 | `healthchecks` | `watchdog-url` | Optional: Healthchecks.io ping URL for the alerting dead man's switch |
 
 New secrets: `openssl rand -hex 32` (k3s tokens) or `openssl rand -base64 24` (passwords).
@@ -122,8 +122,8 @@ none of them exist.
 
 These are created by the tools and are also gitignored:
 
-- `proxmox/terraform.tfstate*`: Terraform state. It contains secrets, so back it up somewhere safe.
-- `proxmox/.terraform/`: provider plugins, from `terraform init`.
-- `k3s-cluster/fetched/kubeconfig-*.yaml`: cluster admin kubeconfigs fetched by the playbook.
+- `terraform/terraform.tfstate*`: Terraform state. It contains secrets, so back it up somewhere safe.
+- `terraform/.terraform/`: provider plugins, from `terraform init`.
+- `ansible/k3s-cluster/fetched/kubeconfig-*.yaml`: cluster admin kubeconfigs fetched by the playbook.
 
 Before committing, `git status` should never list any of the files above.

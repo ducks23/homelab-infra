@@ -94,7 +94,7 @@ the post-up command once by hand to apply it without a reboot:
 ```
 
 Then make Terraform use the hostname and verify the cert. In
-`../../../proxmox/terraform.tfvars`:
+`../../../terraform/terraform.tfvars`:
 
 ```hcl
 proxmox_endpoint = "https://pve.naboo.party:8006/"

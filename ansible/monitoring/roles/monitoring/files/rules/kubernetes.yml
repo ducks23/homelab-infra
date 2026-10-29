@@ -1,0 +1,77 @@
+# Managed by Ansible (ansible/monitoring/roles/monitoring). The k3s clusters, from the metrics Alloy
+# pushes in (../../infrastructure/controllers/k8s-monitoring.yaml). Every series carries cluster="prod"/"dev" (and env=).
+groups:
+  - name: kubernetes
+    rules:
+      # A cluster that was reporting an hour ago and isn't now: Alloy is down, or the cluster is.
+      - alert: ClusterNotReporting
+        expr: |
+          count by (cluster, env) (kube_node_info offset 1h)
+            unless count by (cluster, env) (kube_node_info)
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "The {{ $labels.cluster }} cluster has stopped sending metrics"
+          description: Check that its API answers, then the pods in its monitoring namespace.
+
+      - alert: KubeNodeNotReady
+        expr: kube_node_status_condition{condition="Ready", status="true"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.cluster }}: node {{ $labels.node }} is NotReady"
+
+      - alert: KubePodCrashLooping
+        expr: max without (uid) (kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff"}) == 1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.cluster }}: {{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is crash looping"
+          description: "kubectl --context {{ $labels.cluster }} -n {{ $labels.namespace }} logs {{ $labels.pod }} -c {{ $labels.container }} --previous"
+
+      - alert: KubeContainerWaiting
+        expr: |
+          max without (uid) (kube_pod_container_status_waiting_reason{reason=~"ImagePullBackOff|ErrImagePull|CreateContainerConfigError|CreateContainerError"}) == 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.cluster }}: {{ $labels.namespace }}/{{ $labels.pod }} can't start ({{ $labels.reason }})"
+
+      - alert: KubePodNotRunning
+        expr: |
+          sum by (cluster, env, namespace, pod) (kube_pod_status_phase{phase=~"Pending|Unknown|Failed"}) > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.cluster }}: {{ $labels.namespace }}/{{ $labels.pod }} hasn't been running for 15 minutes"
+
+      - alert: KubeDeploymentUnavailable
+        expr: |
+          kube_deployment_spec_replicas > 0
+            and kube_deployment_status_replicas_available < kube_deployment_spec_replicas
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.cluster }}: deployment {{ $labels.namespace }}/{{ $labels.deployment }} has {{ $value }} of its replicas available"
+
+      - alert: KubeJobFailed
+        expr: kube_job_status_failed > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.cluster }}: job {{ $labels.namespace }}/{{ $labels.job_name }} failed"
+
+      - alert: KubePersistentVolumeFillingUp
+        expr: kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes < 0.15
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.cluster }}: volume {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} has {{ $value | humanizePercentage }} free"
