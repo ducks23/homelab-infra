@@ -13,4 +13,4 @@ patches:
         value: bible-app.dev.naboo.party
 images:
   - name: ghcr.io/ducks23/bible-app
-    newTag: "20261101050436" # {"$imagepolicy": "flux-system:bible-app-dev:tag"}
+    newTag: "20261101052544" # {"$imagepolicy": "flux-system:bible-app-dev:tag"}
