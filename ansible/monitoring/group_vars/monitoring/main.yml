@@ -42,3 +42,4 @@ monitoring_tcp_targets:
 monitoring_http_targets:
   - { name: easycabinets, host: dev-vip, url: "https://easycabinets.dev.naboo.party", env: dev }
   - { name: workbench, host: dev-vip, url: "https://workbench.dev.naboo.party", env: dev }
+  - { name: portfolio, host: dev-vip, url: "https://portfolio.dev.naboo.party", env: dev }

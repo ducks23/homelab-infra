@@ -46,8 +46,8 @@ it clears.
   includes the `kubectl logs` command to look at it.
 - **Services:** Proxmox UI, TrueNAS NFS, both k3s API VIPs, PostgreSQL stop accepting
   connections.
-- **Websites:** EasyCabinets and Workbench aren't returning 2xx over HTTPS, or their certificate
-  expires within 14 days.
+- **Websites:** EasyCabinets, Workbench and the portfolio site aren't returning 2xx over HTTPS, or
+  their certificate expires within 14 days.
 - **The pipeline itself:** Prometheus can't scrape a target, or Alertmanager can't send email.
 
 To watch something else, add it to the target lists in `group_vars/monitoring/main.yml` and

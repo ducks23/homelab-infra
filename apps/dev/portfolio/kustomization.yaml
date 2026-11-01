@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: portfolio
+resources:
+  - ../../base/portfolio
+patches:
+  - target:
+      kind: Ingress
+      name: portfolio
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: portfolio.dev.naboo.party
+images:
+  - name: ghcr.io/ducks23/portfolio
+    newTag: "00000000000000" # {"$imagepolicy": "flux-system:portfolio-dev:tag"}
