@@ -1,0 +1,11 @@
+# Portfolio site (github.com/ducks23/v0-2025-resume). Its CI pushes images; the tag
+# and per-cluster settings are in ../../<env>/portfolio.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: portfolio
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+  - ghcr-pull.yaml

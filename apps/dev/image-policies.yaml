@@ -41,3 +41,17 @@ spec:
   policy:
     numerical:
       order: asc
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: portfolio-dev
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: portfolio
+  filterTags:
+    pattern: '^\d{14}$'
+  policy:
+    numerical:
+      order: asc
