@@ -1,0 +1,14 @@
+# bible_app (github.com/ducks23/bible_app), a reader for bible-api. Its CI pushes images; the
+# tag and host are in ../../<env>/bible-app.
+#
+# It shares the bible namespace with bible-api, bible-web and bible-db, which `make deploy` in
+# the local bible-api project still manages. There is deliberately no namespace.yaml here: if
+# Flux owned the namespace, removing this app would prune it, and the database with it.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: bible
+resources:
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+  - ghcr-pull.yaml

@@ -9,3 +9,4 @@ resources:
   - easycabinets.yaml
   - workbench.yaml
   - patchwork.yaml
+  - bible-app.yaml

@@ -1,0 +1,80 @@
+# bible_app: a Next.js reader that gets scripture from bible-api in the same namespace.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bible-app
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: bible-app
+  template:
+    metadata:
+      labels:
+        app: bible-app
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: bible-app
+      # preStop sleep + grace: Traefik drops a terminating pod from its endpoints a moment
+      # after Kubernetes marks it, so keep serving for a few seconds instead of 502ing.
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: web
+          image: ghcr.io/ducks23/bible-app
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          env:
+            - name: BIBLE_API_URL
+              value: http://bible-api/api/v1
+            - name: BIBLE_TRANSLATION
+              value: kjv
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "8"]
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 384Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: next-cache
+              mountPath: /app/.next/cache
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: next-cache
+          emptyDir: {}
